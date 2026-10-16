@@ -16,7 +16,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #e8dcc8;
+      background-color: #E8DCC8;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       color: #3d352e;
     }
@@ -45,14 +45,14 @@
       top: 24px;
       left: 24px;
       z-index: 10;
-      background: rgba(232, 220, 200, 0.92);
+      background: rgba(232, 220, 200, 0.94);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(140, 111, 94, 0.25);
+      border: 1px solid rgba(140, 111, 94, 0.28);
       border-radius: 8px;
       padding: 22px 26px;
-      max-width: 520px;
-      box-shadow: 0 16px 40px rgba(60, 45, 35, 0.18);
+      max-width: 530px;
+      box-shadow: 0 16px 40px rgba(60, 45, 35, 0.2);
       transition: opacity 0.3s ease, transform 0.3s ease;
       opacity: 0;
       pointer-events: none;
@@ -114,7 +114,7 @@
       font-size: 0.85rem;
     }
     #hud .physarum-box {
-      background: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.45);
       border-left: 3px solid #a36f52;
       padding: 8px 12px;
       font-size: 0.77rem;
@@ -157,14 +157,13 @@
       text-align: right;
     }
 
-    /* Minimal indicator when HUD is closed */
     #quick-pill {
       position: absolute;
       bottom: 20px;
       right: 20px;
       z-index: 9;
-      background: rgba(232, 220, 200, 0.85);
-      border: 1px solid rgba(140, 111, 94, 0.2);
+      background: rgba(232, 220, 200, 0.88);
+      border: 1px solid rgba(140, 111, 94, 0.25);
       border-radius: 20px;
       padding: 6px 14px;
       font-size: 0.76rem;
@@ -173,7 +172,7 @@
       pointer-events: none;
       transition: opacity 0.4s ease;
       font-family: monospace;
-      box-shadow: 0 4px 12px rgba(60, 45, 35, 0.1);
+      box-shadow: 0 4px 12px rgba(60, 45, 35, 0.12);
     }
   </style>
 </head>
@@ -189,82 +188,80 @@ Creative Coding: Estética Pastel, Nocturna, Indie Suave y Flujos de Agentes
 Agente         │ Qué Percibe (Entradas)         │ Radio / Límite    │ Cálculo de Acción / Reglas de Steering
 ───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
 BrushAgent     │ - Vector de campo de flujo     │ 1 celda campo;    │ F_steer = limit(w_f * V_flow * maxSpeed + w_p * ∇T - V, F_max)
-(Pincel)       │ - Gradiente feromona Physarum  │ 2 celdas trail;   │ Velocidad base lenta (0.7–1.6 px). Física de cola multiplicativa:
-  · Fondo      │ - Color en ColorGrid (Fase 2)  │ 1 celda ColorGrid │ r *= decay_tempo. Trazado continuo limpio sin cabezas redondas.
-  · Troncos    │ - Frente espacial de transición│                   │ Troncos: r_0 sutil (~5–6.5px), tonos moca/cacao/taupe.
-  · Ramas      │ - Cobertura del lienzo         │                   │ Fondo y Follaje: renacen en zonas de menor cobertura.
-  · Suelo      │                                │                   │ Escalamiento asintótico por densidad objetivo D (0–1).
-  · Follaje    │                                │                   │
+(Pincel)       │ - Gradiente feromona Physarum  │ 2 celdas trail;   │ Velocidad base lenta (~0.7–1.6 px). Trazado cónico continuo
+  · Fondo      │ - Color en ColorGrid (Fase 2)  │ 1 celda ColorGrid │ r *= decay_tempo (decay 0.996–0.998 para cola visible de 80–200px).
+  · Troncos    │ - Frente espacial fromId->toId │                   │ Troncos: café moca/cacao hasta 10px. Fondo y Follaje: renacen
+  · Ramas      │ - Cobertura del lienzo         │                   │ en áreas de menor cobertura. Suelo garantizado (≥15% activos).
+  · Suelo      │                                │                   │ F3: se reorganiza en Carbón (55%), Brasa (30%) y Llama (15%).
+  · Follaje    │                                │                   │ F4: agentes de tinta se contraen hacia el centro.
 ───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
-FireflyAgent   │ - Vecinos del enjambre         │ R_flock = 45px;   │ Flocking Reynolds: F_sep + F_ali + F_coh
-(Luciérnagas   │ - Posición fogata central (F1) │ R_sep = 20px;     │ + F_seek(centro) + F_wander + F_evade(gotas en F2).
-/ Estrellas)   │ - Gotas de lluvia (Fase 2)     │ R_evade = 30px    │ Trazo fino y claro (r≈1.2) como hebra de luz translúcida.
-               │ - Pulso del Intérprete (Z)     │                   │ CERO discos luminosos. En F4 quedan como estrellas tenues;
-               │                                │                   │ con Tecla B son semillas del renacimiento azul pastel.
+FireflyAgent   │ - Vecinos del enjambre (~45)   │ R_flock = 45px;   │ Flocking Reynolds: F_sep + F_ali + F_coh + F_seek(fuego).
+(Luciérnagas   │ - Ciclo de energía autónomo    │ R_sep = 20px;     │ Cada 4–9s entra en estado "giro" (órbita de 1.5–3s) trazando
+/ Estrellas)   │ - Estado de giro espiral       │ R_evade = 30px    │ una espiral brillante (r=14–30px) de alto contraste (mantequilla
+               │ - Pulso del Intérprete (Z)     │                   │ sobre papel). En F3 desaparecen; en F4 son estrellas del renacimiento.
 ───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
 PhysarumAgent  │ - Feromona en 3 sensores:      │ Distancia ds=12px;│ Lee SL, SC, SR en Float32Array TrailMap.
-(Moho / Venas) │   Frontal, Izquierda, Derecha  │ Ángulo θs=32°     │ Si SC > max(SL, SR) -> avanza directo;
-               │                                │                   │ si SL > SR -> gira +Δθ; si no -> gira -Δθ.
-               │                                │                   │ BrushAgents suman w_phys * ∇T a su steering.
+(Moho / Venas) │   Frontal, Izquierda, Derecha  │ Ángulo θs=32°     │ Avanza hacia máxima feromona y deposita rastro.
+               │                                │                   │ BrushAgents suman w_phys * ∇T a su steering (dominancia en F2 y F4).
 ───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
 RainDropAgent  │ - Vector de campo de flujo     │ 1 celda campo;    │ F = g_rain + 0.35 * V_flow - μ * densidadPigmento * V.
-(Gotas Lluvia) │ - Color local en ColorGrid     │ 1 celda ColorGrid │ Nace arriba, toma el color del lienzo bajo él y lo arrastra
-               │                                │                   │ dejando hebras translúcidas del MISMO color (+7% lum). Cero blanco.
+(Gotas Lluvia) │ - Color local en ColorGrid     │ 1 celda ColorGrid │ Muestrea color local; si está cerca del fondo re-muestrea en trazo.
+               │                                │                   │ Arrastra pigmento dejando hebras translúcidas del MISMO color (+6% lum).
 ───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
-TenderVolute   │ - Vórtice local temporal       │ Radio 25–60px     │ Micro-agentes generados por el CLIC DEL RATÓN sobre un trazo
-(Cosita tierna)│ - Órbita centrípeta suave      │ Vida corta (2–4s) │ existente. Rastro fino (1.0–1.6px) en acento crema/rosa polvo.
+SmokeAshAgent  │ - Flotabilidad térmica         │ 1 celda campo;    │ Sube en HÉLICE ESPIRAL alrededor de un ancla ascendente; se ensancha
+(Humo helicoidal)│ - Campo local y viento (X)   │                   │ y desvanece suavemente. Tono lavanda grisáceo (#9C8BAA), alpha 0.25–0.35.
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+TenderVolute   │ - Vórtice dinámico local       │ Radio 60–140px    │ Espiral emergente creada con el CLIC DEL MOUSE sobre un trazo
+("Cosita tierna")│ - Steering centrípeto/orbital│ Vida 3–5s         │ existente: 20–36 agentes nacen con velocidad tangencial y se aprietan
+               │                                │                   │ acelerando al centro, más 3–5 orbitadores secundarios.
 ────────────────────────────────────────────────────────────────────────────────
 
 2. ALGORITMO DOMINANTE, EFECTO VISIBLE DE PHYSARUM Y CONTRIBUCIÓN EMERGENTE
 ────────────────────────────────────────────────────────────────────────────────
 Fase 1 — El Bosque (Tempo = 0.6)
-  • Algoritmo dominante: Composición en 5 capas estructurales + Flocking armónico de luciérnagas.
-  • Acoplamiento Physarum (w_phys = 0.25): Sutil venación y curvatura orgánica que rompe la rigidez en ramas y follaje.
-  • Paleta Pastel: Papel lino #E8DCC8/#D9CFBD; salvia, musgo suave, durazno, albaricoque, terracota suave, mantequilla,
-    coral suave, rosa polvo, lavanda grisácea, moca, cacao y acento azul grisáceo.
+  • Algoritmo: Composición en 5 capas estructurales + Flocking armónico de luciérnagas.
+  • Suelo garantizado: Franja inferior (82–100% altura) con ≥15% de agentes activos en campo horizontal.
+  • Hojas autónomas: Se desprenden de ramas, caen en espiral lenta y se asientan en el suelo.
+  • Luciérnagas: Orbitan el fuego y realizan giros en espiral visibles cada 4–9s de forma asíncrona.
+  • Humo: Ascenso helicoidal en espiral que se abre como bruma acuarelada.
 Fase 2 — Caída y Agua (Tempo = 0.9)
-  • Algoritmo dominante: PHYSARUM EN DOMINANCIA MÁXIMA (w_phys = 0.75) con alta difusión + ColorGrid Float32Array.
-  • Aporte emergente: Flujo predominantemente hacia abajo pero con meandros, vórtices y hebras escurridas (Ref 3 y 4).
-    Las gotas arrastran el pigmento existente sin blanquear. Acentos en rosa polvo, oro suave y lavanda.
+  • Algoritmo: PHYSARUM EN DOMINANCIA MÁXIMA (w_phys = 0.75) + Arrastre de pigmento en ColorGrid.
+  • Aporte emergente: Hebras largas verticales que escurren con el MISMO color del bosque (sin capas blancas).
+  • Espirales pastel autónomas: Cada 6–14s surge un vórtice autónomo (70–150px) atrapando agentes en rizos suaves.
 Fase 3 — La Fogata (Tempo = 1.3)
-  • Algoritmo dominante: Vórtices térmicos multidireccionales + Fondo de brasas en toda la pantalla (Ref 5 y 6).
-  • Aporte emergente: Masa de fuego que cubre toda la pantalla progresivamente; lenguas de fuego en 4–6 focos móviles
-    con núcleo crema cálido (#FBF0D8) y puntas rosa carmín y granate suave. Sin humo.
+  • Algoritmo: Rediseño completo en 3 capas por toda la pantalla sobre fondo tinta oscura #0D0B12.
+    - Carbón (~55%): Trazos anchos y oscuros en 8–12 vórtices multidireccionales.
+    - Brasa (~30%): Trazos medios cálidos y chispas en remolinos.
+    - Llama (~15%): Lenguas en 5–7 focos móviles; núcleo crema #FBF0D8 (screen/lighter) y puntas granate. Sin humo ni luciérnagas.
 Fase 4 — Apagado y Renacimiento (Tempo = 0.6)
-  • Algoritmo dominante:
-    - Pre-B: Extinción centrípeta hacia tinta oscura nocturna (#0D0B12 -> #17141C -> #2A2531) sin humo.
-    - Post-B (Renacimiento): PHYSARUM DOMINANTE (w_phys = 0.80) organizando filigranas de acuarela azul (Ref 7).
-    - Paleta: Periwinkle, azul polvo, hielo, lavanda, índigo suave, blanco perla y toque de rosa pálido.
+  • Apagado F3->F4: Agentes de tinta (~1800) nacen en el anillo de extinción centrípeto y oscurecen las puntas hacia el centro.
+    ≥85% oscuro antes de B con brasa central y estrellas tenues. NADA de azul antes de B.
+  • Renacimiento (B): Fondo pasa a azul-tinta #141A33; estrellas irradian esporas azules (hielo, periwinkle, azul polvo, índigo).
+  • ESPACIO en F4: 3–4 espirales simultáneas (120–220px) emergentes por steering puro, curvando visiblemente los trazos vecinos.
 
-3. TABLA DE TECLAS Y CONTROLES
+3. TABLA DE TECLAS Y CONTROLES (Independientes del mouse)
 ────────────────────────────────────────────────────────────────────────────────
-Transiciones (frente espacial con respuesta en <1s y propagación en 12–18s):
-  [1] [2] [3] [4] : Ir a la fase especificada.
+  [1] [2] [3] [4] : Transición por frente espacial (<1s inicio visible, 14s total).
   [←] / [→]       : Fase anterior / siguiente.
-
-Acciones Expresivas Contextuales (NUNCA dependen del mouse):
-  [ESPACIO]       : Acción principal según fase:
-                    - F1: Brote de hojas otoñales naranjas desde una RAMA existente en pantalla.
-                    - F2: Mancha de agua y dilución en un trazo existente.
+  [ESPACIO]       : Acción principal según fase (nace desde un trazo existente):
+                    - F1: Brote de hojas otoñales naranjas desde una rama existente.
+                    - F2: Mancha de agua y vórtice de dilución en un trazo existente.
                     - F3: Empuje de llamas ascendente desde un foco existente.
-                    - F4: Genera una espiral áurea única de filigrana azul/blanca (Ref 7) desde un trazo existente.
-  [Z]             : Pulso del intérprete:
-                    - F1: Latido rítmico (expansión de fogata, dispersión radial de luciérnagas).
-                    - F2: Ráfaga de gotas de lluvia (aumenta densidad).
+                    - F4: 3–4 espirales áureas simultáneas de filigrana azul/blanca (Ref 7).
+  [Z]             : Pulso del intérprete (beat):
+                    - F1: Latido rítmico (expansión de fuego, bocanada de humo en espiral).
+                    - F2: Aguacero de gotas descendentes.
                     - F3: Golpe de brasas ardientes desde los focos.
-                    - F4: Gotas de rocío azul que sangran sobre el papel húmedo.
-  [X]             : Ráfaga de viento hacia el ratón (ÚNICA acción que usa la dirección del cursor).
-  [C]             : Conmutador (Toggle) de cortina de cenizas en F1.
+                    - F4: Rocío azul que sangra en el papel húmedo.
+  [Clic Mouse]    : "Cosita tierna" melódica: espiral emergente de 20–36 agentes sobre un trazo al azar.
+  [X]             : Viento hacia el ratón (ÚNICA tecla que usa la dirección del cursor).
+  [C]             : Conmutador (Toggle) de cenizas en F1.
   [B]             : Renacimiento azul desde las estrellas (F4).
-  [Clic Mouse]    : "Cositas tiernas" melódicas: genera una voluta de 8–12 agentes finos sobre un trazo al azar.
-
-Moduladores Globales:
-  [↑] / [↓]       : Control de Densidad Objetivo D (0.06 – 1.00) escalado asintótico.
+  [↑] / [↓]       : Densidad objetivo D (0.06 – 1.00). Deriva autónoma hacia 0.50–0.85 según fase.
   [A] / [D] / Wheel: Turbulencia del campo (laminar ordenado ↔ caótico).
   [S]             : Radio de percepción de agentes.
-  [R]             : Regenerar semilla aleatoria del campo vectorial sin reiniciar simulación.
-  [F]             : Pantalla completa (Fullscreen).
-  [H]             : Mostrar / Ocultar este HUD.
+  [R]             : Regenerar semilla aleatoria del campo sin reiniciar.
+  [F] / [H]       : Pantalla completa / Mostrar HUD overlay.
 ════════════════════════════════════════════════════════════════════════════════
 -->
 
@@ -286,8 +283,8 @@ Moduladores Globales:
   <div class="metrics-grid">
     <div class="metric-item"><span>Tempo:</span> <strong id="hud-tempo">0.60</strong></div>
     <div class="metric-item"><span>FPS:</span> <strong id="hud-fps">60</strong></div>
-    <div class="metric-item"><span>Densidad [↑/↓]:</span> <strong id="hud-density">0.10 (obj: 0.10)</strong></div>
-    <div class="metric-item"><span>Agentes Activos:</span> <strong id="hud-agents">380 / 3800</strong></div>
+    <div class="metric-item"><span>Densidad [↑/↓]:</span> <strong id="hud-density">0.50 (obj: 0.50)</strong></div>
+    <div class="metric-item"><span>Agentes Activos:</span> <strong id="hud-agents">1900 / 3800</strong></div>
     <div class="metric-item"><span>Turbulencia [A/D]:</span> <strong id="hud-turb">0.45</strong></div>
     <div class="metric-item"><span>Frente Transición:</span> <strong id="hud-front">Completa</strong></div>
     <div class="metric-item"><span>Percepción [S]:</span> <strong id="hud-percep">45px</strong></div>
@@ -302,15 +299,15 @@ Moduladores Globales:
   <table class="keys-table">
     <tr class="highlight"><td class="key-col">[ESPACIO]</td><td id="hud-key-space">Hojas naranjas brotan de una rama existente</td></tr>
     <tr class="highlight"><td class="key-col">[Z]</td><td id="hud-key-z">Pulso del intérprete (expansión + dispersión)</td></tr>
-    <tr><td class="key-col">[Clic]</td><td>"Cosita tierna": mini voluta melódica sobre un trazo al azar</td></tr>
+    <tr><td class="key-col">[Clic]</td><td>"Cosita tierna": espiral emergente sobre un trazo al azar</td></tr>
     <tr><td class="key-col">[X] / [C]</td><td id="hud-key-xc">X: Viento hacia ratón | C: Conmutar cenizas</td></tr>
     <tr><td class="key-col">[B]</td><td id="hud-key-b">Renacimiento azul (exclusivo Fase 4)</td></tr>
   </table>
 
   <h2>Navegación y Parámetros</h2>
   <table class="keys-table">
-    <tr><td class="key-col">[1]..[4]</td><td>Transición por frente espacial (<1s inicio, ~14s total)</td></tr>
-    <tr><td class="key-col">[↑] / [↓]</td><td>Densidad objetivo D (arranca vacía en F1)</td></tr>
+    <tr><td class="key-col">[1]..[4]</td><td>Transición por frente espacial (<1s inicio, fondo en frente)</td></tr>
+    <tr><td class="key-col">[↑] / [↓]</td><td>Densidad objetivo D</td></tr>
     <tr><td class="key-col">[←] / [→]</td><td>Fase anterior / siguiente</td></tr>
     <tr><td class="key-col">[R]</td><td>Regenerar semilla del campo</td></tr>
     <tr><td class="key-col">[F] / [H]</td><td>F: Pantalla completa | H: Ocultar/Mostrar HUD</td></tr>
@@ -487,7 +484,14 @@ const FastMath = (() => {
     };
   }
 
-  return { noise2D, noise3D, reseed, lerp, clamp, smoothstep, hexToRgb };
+  function rgbDist(c1, c2) {
+    const dr = c1.r - c2.r;
+    const dg = c1.g - c2.g;
+    const db = c1.b - c2.b;
+    return Math.sqrt(dr*dr + dg*dg + db*db);
+  }
+
+  return { noise2D, noise3D, reseed, lerp, clamp, smoothstep, hexToRgb, rgbDist };
 })();
 
 /**
@@ -557,7 +561,7 @@ class CoverageMap {
     const r = Math.floor(y / this.cellH);
     if (c >= 0 && c < this.cols && r >= 0 && r < this.rows) {
       const idx = r * this.cols + c;
-      this.data[idx] = Math.min(20.0, this.data[idx] + amount);
+      this.data[idx] = Math.min(25.0, this.data[idx] + amount);
     }
   }
   decay(rate = 0.996) {
@@ -632,10 +636,12 @@ class ColorGrid {
       b: this.data[idx00+2]*w00 + this.data[idx10+2]*w10 + this.data[idx01+2]*w01 + this.data[idx11+2]*w11
     };
   }
-  getDensity(x, y) {
+  getLuminosity(x, y) {
     const c = this.sample(x, y);
-    const luma = c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
-    return Math.max(0, 1.0 - luma);
+    return c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
+  }
+  getDensity(x, y) {
+    return Math.max(0, 1.0 - this.getLuminosity(x, y));
   }
   deposit(x, y, r, g, b, alpha) {
     const ix = Math.floor(x * this.scale);
@@ -657,7 +663,7 @@ class ColorGrid {
     
     const fIdx = (fy * this.w + fx) * 3;
     const tIdx = (ty * this.w + tx) * 3;
-    const amt = Math.min(0.60, amount);
+    const amt = Math.min(0.65, amount);
 
     const dr = this.data[fIdx] * amt;
     const dg = this.data[fIdx + 1] * amt;
@@ -794,7 +800,7 @@ class PhysarumSimulation {
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * MÓDULO 5: FlowField (Multicapa 4π con Focos Dinámicos)
+ * MÓDULO 5: FlowField (Multicapa 4π con Vórtices Alternados y Focos)
  * ══════════════════════════════════════════════════════════════════════════════
  */
 class FlowField {
@@ -830,35 +836,52 @@ class FlowField {
       this.trunks.push({ x, width });
     }
 
+    // 8–12 vórtices grandes con sentidos alternados para F3 y F2
     this.vortices = [];
-    const vCount = 6 + Math.floor(Math.random() * 4);
+    const vCount = 10 + Math.floor(Math.random() * 3);
     for (let i = 0; i < vCount; i++) {
       this.vortices.push({
         x: Math.random() * this.width,
         y: Math.random() * this.height,
-        radius: 140 + Math.random() * 220,
-        dir: (i % 2 === 0) ? 1 : -1, // Sentidos alternados
-        strength: 0.6 + Math.random() * 0.7
+        radius: 200 + Math.random() * 180, // 200–380px
+        dir: (i % 2 === 0) ? 1 : -1,
+        strength: 0.7 + Math.random() * 0.6,
+        life: 1.0,
+        dynamic: false
       });
     }
 
-    // 4–6 focos móviles para Fase 3 (La Fogata)
+    // 5–7 focos móviles para Fase 3 (Llamas repartidas entre 40% y 95% altura)
     this.fireFoci = [];
-    for (let i = 0; i < 5; i++) {
+    const fCount = 6;
+    for (let i = 0; i < fCount; i++) {
       this.fireFoci.push({
-        baseX: this.width * (0.2 + i * 0.15),
-        baseY: this.height * (0.45 + (i % 2) * 0.2),
+        baseX: this.width * (0.15 + (i / fCount) * 0.7),
+        baseY: this.height * (0.45 + (i % 3) * 0.22),
         phase: Math.random() * Math.PI * 2,
-        radius: 120 + Math.random() * 100
+        radius: 110 + Math.random() * 80
       });
     }
   }
-  addDynamicVortex(x, y, radius, dir, strength) {
-    this.vortices.push({ x, y, radius, dir, strength, dynamic: true, life: 1.0 });
-    if (this.vortices.length > 20) this.vortices.shift();
+  addDynamicVortex(x, y, radius, dir, strength, maxDuration = 10) {
+    this.vortices.push({
+      x, y, radius, dir, strength,
+      dynamic: true,
+      life: 1.0,
+      decayRate: 1.0 / (maxDuration * 60)
+    });
+    // Conserva máximo 24 vórtices totales
+    if (this.vortices.length > 24) {
+      for (let i = 0; i < this.vortices.length; i++) {
+        if (this.vortices[i].dynamic) {
+          this.vortices.splice(i, 1);
+          break;
+        }
+      }
+    }
   }
   update(phase, tempo, timeElapsed, pulseVal, windVec) {
-    this.time += 0.003 * tempo; // Más lento
+    this.time += 0.003 * tempo;
     const cols = this.cols;
     const rows = this.rows;
     const cs = this.cellSize;
@@ -867,6 +890,17 @@ class FlowField {
 
     const centerX = this.width * 0.5;
     const centerY = this.height * 0.5;
+
+    // Actualizar y purgar vórtices dinámicos expirados
+    for (let i = this.vortices.length - 1; i >= 0; i--) {
+      const v = this.vortices[i];
+      if (v.dynamic) {
+        v.life -= (v.decayRate || 0.002) * tempo;
+        if (v.life <= 0) {
+          this.vortices.splice(i, 1);
+        }
+      }
+    }
 
     for (let r = 0; r < rows; r++) {
       const y = r * cs;
@@ -882,7 +916,7 @@ class FlowField {
         let baseVx = Math.cos(angle);
         let baseVy = Math.sin(angle);
 
-        // Influencia de vórtices locales
+        // Influencia de vórtices
         let vtxVx = 0, vtxVy = 0;
         for (let i = 0; i < this.vortices.length; i++) {
           const v = this.vortices[i];
@@ -892,13 +926,18 @@ class FlowField {
           const r2 = v.radius * v.radius;
           if (d2 < r2) {
             const dist = Math.sqrt(d2) + 0.1;
-            const factor = (1.0 - dist / v.radius) * v.strength * (v.life || 1.0);
+            const factor = (1.0 - dist / v.radius) * v.strength * (v.life !== undefined ? v.life : 1.0);
             vtxVx += (-dy / dist) * factor * v.dir;
             vtxVy += (dx / dist) * factor * v.dir;
           }
         }
 
-        if (phase.id === 1) {
+        // Evaluar estado espacial de la transición fromId -> toId
+        const blend = phase.getSpatialBlend(x, y);
+        const effectiveId = blend > 0.5 ? phase.toId : phase.fromId;
+
+        if (effectiveId === 1) {
+          // Fase 1: Troncos, suelo y respiración
           let inTrunk = 0;
           for (let ti = 0; ti < this.trunks.length; ti++) {
             const tr = this.trunks[ti];
@@ -906,72 +945,72 @@ class FlowField {
             if (dist < tr.width) inTrunk = Math.max(inTrunk, 1.0 - dist / tr.width);
           }
 
-          const groundThreshold = this.height * 0.82;
-          let inGround = y > groundThreshold ? (y - groundThreshold) / (this.height - groundThreshold) : 0;
+          const groundThresh = this.height * 0.82;
+          let inGround = y > groundThresh ? (y - groundThresh) / (this.height - groundThresh) : 0;
 
           const trunkVx = FastMath.noise2D(x * 0.02, y * 0.004 + t) * 0.15;
           const trunkVy = -0.75 + pulseVal * 0.3;
-          const groundVx = (FastMath.noise2D(x * 0.004, t) > 0 ? 1 : -1) * 0.7;
-          const groundVy = 0.05;
+          const groundVx = (FastMath.noise2D(x * 0.004, t) > 0 ? 1 : -1) * 0.75;
+          const groundVy = 0.04;
 
-          vx = FastMath.lerp(baseVx + vtxVx * 0.4, trunkVx, inTrunk * 0.85);
-          vy = FastMath.lerp(baseVy + vtxVy * 0.4, trunkVy, inTrunk * 0.85);
+          vx = FastMath.lerp(baseVx + vtxVx * 0.35, trunkVx, inTrunk * 0.85);
+          vy = FastMath.lerp(baseVy + vtxVy * 0.35, trunkVy, inTrunk * 0.85);
 
           if (inGround > 0) {
-            vx = FastMath.lerp(vx, groundVx, inGround * 0.85);
-            vy = FastMath.lerp(vy, groundVy, inGround * 0.85);
+            vx = FastMath.lerp(vx, groundVx, inGround * 0.88);
+            vy = FastMath.lerp(vy, groundVy, inGround * 0.88);
           }
 
-          // Fogata en el centro exacto
+          // Fuego central pequeño
           const dfx = x - centerX;
           const dfy = y - centerY;
           const dFireSq = dfx*dfx + dfy*dfy;
-          if (dFireSq < 28000) {
+          if (dFireSq < 26000) {
             const fDist = Math.sqrt(dFireSq);
-            const fWeight = (1.0 - fDist / 170);
-            vy -= fWeight * (0.65 + pulseVal * 1.4);
-            vx += (FastMath.noise2D(x * 0.03, t * 2.0) * 0.35) * fWeight;
+            const fWeight = (1.0 - fDist / 160);
+            vy -= fWeight * (0.65 + pulseVal * 1.3);
+            vx += (FastMath.noise2D(x * 0.03, t * 2.0) * 0.3) * fWeight;
           }
 
-        } else if (phase.id === 2) {
-          // Fase 2: Principalmente hacia abajo con meandros y vórtices
-          const downwardBias = 0.75;
+        } else if (effectiveId === 2) {
+          // Fase 2: Principalmente hacia abajo pero con meandros y vórtices
+          const downwardBias = 0.85;
           vx = baseVx * 0.65 + vtxVx * 0.85;
           vy = downwardBias + baseVy * 0.35 + vtxVy * 0.35;
 
-        } else if (phase.id === 3) {
-          // Fase 3: Fondo de brasas en múltiples remolinos sin dirección dominante + focos móviles
+        } else if (effectiveId === 3) {
+          // Fase 3: Rediseño La Fogata (vórtices grandes rotacionales + focos móviles)
           let flameVx = 0, flameVy = 0;
           for (let fi = 0; fi < this.fireFoci.length; fi++) {
             const foc = this.fireFoci[fi];
-            const fx = foc.baseX + Math.sin(t * 0.8 + foc.phase) * 60;
-            const fy = foc.baseY + Math.cos(t * 0.6 + foc.phase) * 40;
+            const fx = foc.baseX + Math.sin(t * 0.7 + foc.phase) * 60;
+            const fy = foc.baseY + Math.cos(t * 0.5 + foc.phase) * 45;
             const dx = x - fx;
             const dy = y - fy;
             const dist = Math.sqrt(dx*dx + dy*dy) + 1.0;
-            if (dist < foc.radius * 2.0) {
-              const fFactor = (1.0 - dist / (foc.radius * 2.0));
+            if (dist < foc.radius * 2.2) {
+              const fFactor = (1.0 - dist / (foc.radius * 2.2));
               flameVx += -(dy / dist) * fFactor * 1.5;
-              flameVy += (dx / dist) * fFactor * 0.4 - fFactor * 1.4; // Convección ascendente local
+              flameVy += (dx / dist) * fFactor * 0.4 - fFactor * 1.6;
             }
           }
-          vx = baseVx * 0.9 + vtxVx * 1.1 + flameVx;
-          vy = baseVy * 0.9 + vtxVy * 1.1 + flameVy;
+          vx = baseVx * 0.9 + vtxVx * 1.2 + flameVx;
+          vy = baseVy * 0.9 + vtxVy * 1.2 + flameVy;
 
-        } else if (phase.id === 4) {
+        } else if (effectiveId === 4) {
           if (!phase.rebirthActive) {
+            // Apagado centrípeto
             const dx = centerX - x;
             const dy = centerY - y;
             const dist = Math.sqrt(dx*dx + dy*dy) + 1.0;
-            vx = baseVx * 0.3 + (dx / dist) * 0.15;
-            vy = baseVy * 0.3 + (dy / dist) * 0.12 + 0.05;
+            vx = baseVx * 0.3 + (dx / dist) * 0.2;
+            vy = baseVy * 0.3 + (dy / dist) * 0.15 + 0.05;
           } else {
-            vx = baseVx * 0.85 + vtxVx * 1.3;
-            vy = baseVy * 0.85 + vtxVy * 1.3 - 0.1;
+            vx = baseVx * 0.85 + vtxVx * 1.35;
+            vy = baseVy * 0.85 + vtxVy * 1.35 - 0.1;
           }
         }
 
-        // Viento interactivo
         if (windVec && windVec.active) {
           const wdx = x - windVec.x;
           const wdy = y - windVec.y;
@@ -1019,11 +1058,11 @@ class FlowField {
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * MÓDULO 6: Clases de Agentes Autónomos (Pincelada Continua Limpia)
+ * MÓDULO 6: Clases de Agentes Autónomos (Steering Puro y Rastro Continuo)
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-// 6.1 BrushAgent: Agente de trazo de pincel suave con física de radio decreciente
+// 6.1 BrushAgent: Agente de trazo de pincel con cola continua y decaimiento suave
 class BrushAgent {
   constructor(sys, layerType = 'foliage') {
     this.sys = sys;
@@ -1034,7 +1073,7 @@ class BrushAgent {
   }
   reset(initial = false) {
     const sys = this.sys;
-    const pId = sys.phase.id;
+    const pId = sys.phase.toId; // Orientado a la fase de destino
     this.dead = false;
     this.life = 0;
     const hScale = sys.heightScale;
@@ -1042,35 +1081,36 @@ class BrushAgent {
     if (pId === 1) {
       if (this.layerType === 'trunk') {
         const tr = sys.flowField.trunks.length > 0 ? sys.flowField.trunks[Math.floor(Math.random() * sys.flowField.trunks.length)] : null;
-        this.x = tr ? tr.x + (Math.random() - 0.5) * tr.width * 0.85 : Math.random() * sys.width;
-        this.y = sys.height * (0.2 + Math.random() * 0.7);
-        this.r = (2.2 + Math.random() * 1.8) * hScale; // Rango sutil ~4.5–6.5px max
+        this.x = tr ? tr.x + (Math.random() - 0.5) * tr.width * 0.8 : Math.random() * sys.width;
+        this.y = sys.height * (0.18 + Math.random() * 0.72);
+        this.r = (3.5 + Math.random() * 2.5) * hScale; // Troncos hasta ~10px
         this.decay = 0.998;
         this.fieldWeight = 1.0;
       } else if (this.layerType === 'branch') {
         const tr = sys.flowField.trunks.length > 0 ? sys.flowField.trunks[Math.floor(Math.random() * sys.flowField.trunks.length)] : null;
         this.x = tr ? tr.x + (Math.random() > 0.5 ? 1 : -1) * (tr.width * 0.45) : Math.random() * sys.width;
-        this.y = sys.height * (0.22 + Math.random() * 0.5);
-        this.r = (1.5 + Math.random() * 1.2) * hScale;
-        this.decay = 0.995;
+        this.y = sys.height * (0.20 + Math.random() * 0.50);
+        this.r = (2.2 + Math.random() * 1.5) * hScale;
+        this.decay = 0.997;
         this.fieldWeight = 0.85;
       } else if (this.layerType === 'ground') {
+        // Franja inferior garantizada (82%–100%)
         this.x = Math.random() * sys.width;
         this.y = sys.height * (0.82 + Math.random() * 0.17);
-        this.r = (1.4 + Math.random() * 1.3) * hScale;
-        this.decay = 0.994;
+        this.r = (2.0 + Math.random() * 1.6) * hScale;
+        this.decay = 0.996;
         this.fieldWeight = 0.95;
       } else {
         const pos = sys.coverageMap.getLeastCoveredPosition();
         this.x = pos.x;
         this.y = pos.y;
         if (this.layerType === 'background') {
-          this.r = (2.0 + Math.random() * 1.8) * hScale;
-          this.decay = 0.997;
+          this.r = (3.0 + Math.random() * 2.2) * hScale;
+          this.decay = 0.998;
           this.fieldWeight = 0.7;
         } else {
-          this.r = (1.1 + Math.random() * 1.2) * hScale;
-          this.decay = 0.993;
+          this.r = (1.8 + Math.random() * 1.6) * hScale;
+          this.decay = 0.996;
           this.fieldWeight = 0.8 + Math.random() * 0.2;
         }
       }
@@ -1083,65 +1123,84 @@ class BrushAgent {
         this.x = pos.x;
         this.y = pos.y;
       }
-      this.r = (1.1 + Math.random() * 1.3) * hScale;
-      this.decay = 0.996;
+      this.r = (1.8 + Math.random() * 1.6) * hScale;
+      this.decay = 0.997;
       this.fieldWeight = 0.9;
     } else if (pId === 3) {
-      if (this.layerType === 'fire_ember') {
+      // Fase 3: Carbón (55%), Brasa (30%), Llama (15%)
+      const rnd = Math.random();
+      if (rnd < 0.55) {
+        this.layerType = 'fire_coal';
         const pos = sys.coverageMap.getLeastCoveredPosition();
         this.x = pos.x;
         this.y = pos.y;
-        this.r = (1.2 + Math.random() * 1.4) * hScale;
-        this.decay = 0.994;
+        this.r = (2.6 + Math.random() * 2.2) * hScale; // 3.5–7px
+        this.decay = 0.997;
         this.fieldWeight = 0.85;
+      } else if (rnd < 0.85) {
+        this.layerType = 'fire_ember';
+        const pos = sys.coverageMap.getLeastCoveredPosition();
+        this.x = pos.x;
+        this.y = pos.y;
+        this.r = (1.8 + Math.random() * 1.4) * hScale; // 2–4px
+        this.decay = 0.996;
+        this.fieldWeight = 0.9;
       } else {
-        const angle = Math.random() * Math.PI * 2;
-        const rad = Math.random() * (sys.width * 0.18);
-        this.x = sys.width * 0.5 + Math.cos(angle) * rad;
-        this.y = sys.height * 0.55 + Math.sin(angle) * rad * 0.5;
-        this.r = (1.8 + Math.random() * 1.5) * hScale;
-        this.decay = 0.988;
+        this.layerType = 'fire_flame';
+        const foc = sys.flowField.fireFoci[Math.floor(Math.random() * sys.flowField.fireFoci.length)];
+        this.x = foc.baseX + (Math.random() - 0.5) * 40;
+        this.y = foc.baseY + (Math.random() - 0.5) * 30;
+        this.r = (2.4 + Math.random() * 2.0) * hScale;
+        this.decay = 0.985; // Se afina rápido
         this.fieldWeight = 1.0;
       }
     } else {
+      // Fase 4: Apagado y Renacimiento
       if (sys.phase.rebirthActive) {
         const s = sys.getRandomSeedStar();
-        this.x = s ? s.x + (Math.random() - 0.5) * 40 : Math.random() * sys.width;
-        this.y = s ? s.y + (Math.random() - 0.5) * 40 : Math.random() * sys.height;
-        this.r = (1.2 + Math.random() * 1.4) * hScale;
-        this.decay = 0.995;
+        this.x = s ? s.x + (Math.random() - 0.5) * 50 : Math.random() * sys.width;
+        this.y = s ? s.y + (Math.random() - 0.5) * 50 : Math.random() * sys.height;
+        this.r = (1.6 + Math.random() * 2.4) * hScale;
+        this.decay = 0.997;
         this.fieldWeight = 0.9;
       } else {
-        const pos = sys.coverageMap.getLeastCoveredPosition();
-        this.x = pos.x;
-        this.y = pos.y;
-        this.r = (1.2 + Math.random() * 1.2) * hScale;
-        this.decay = 0.993;
-        this.fieldWeight = 0.8;
+        // Agente de tinta en el anillo de extinción centrípeto
+        this.layerType = 'ink';
+        const cx = sys.width * 0.5;
+        const cy = sys.height * 0.5;
+        const ang = Math.random() * Math.PI * 2;
+        const rad = sys.phase.extinctionRadius + (Math.random() - 0.5) * 40;
+        this.x = cx + Math.cos(ang) * rad;
+        this.y = cy + Math.sin(ang) * rad;
+        this.r = (2.4 + Math.random() * 2.2) * hScale; // 3–7px
+        this.decay = 0.996;
+        this.fieldWeight = 0.85;
       }
     }
 
     this.px = this.x;
     this.py = this.y;
+    this.prevR = this.r;
     this.vx = (Math.random() - 0.5) * 0.4;
     this.vy = (Math.random() - 0.5) * 0.4;
-    // Velocidad reducida al ~40–50%
-    this.maxSpeed = (0.7 + Math.random() * 0.8) * hScale;
+    this.maxSpeed = (0.75 + Math.random() * 0.85) * hScale;
     this.maxForce = 0.05 + Math.random() * 0.05;
 
     this.color = sys.pickColorForAgent(this.layerType, this.x, this.y);
-    this.alpha = this.layerType === 'background' ? 0.12 + Math.random() * 0.08 : 0.22 + Math.random() * 0.14;
+    this.alpha = this.layerType === 'background' ? 0.14 + Math.random() * 0.08 : 0.26 + Math.random() * 0.14;
+    this.isLighterCore = false;
   }
   update(tempo, wPhys) {
     if (!this.active || this.dead) return;
     this.px = this.x;
     this.py = this.y;
+    this.prevR = this.r;
     this.life += tempo;
 
     this.r *= Math.pow(this.decay, tempo);
 
     const sys = this.sys;
-    const pId = sys.phase.id;
+    const pId = sys.phase.effectivePhaseAt(this.x, this.y);
 
     const flow = sys.flowField.getVector(this.x, this.y);
     const grad = sys.physarum.sampleGradient(this.x, this.y);
@@ -1172,34 +1231,57 @@ class BrushAgent {
 
     sys.coverageMap.add(this.x, this.y, 0.2);
 
+    // En Fase 3: Lengua de llama cambia color con la edad (núcleo crema a granate)
+    if (this.layerType === 'fire_flame') {
+      const ageNorm = Math.min(1.0, this.life / 160);
+      if (ageNorm < 0.25) {
+        this.color = FastMath.hexToRgb("#FBF0D8"); // Núcleo crema cálido
+        this.isLighterCore = true;
+      } else if (ageNorm < 0.65) {
+        this.color = FastMath.hexToRgb("#F08F7C"); // Coral
+        this.isLighterCore = false;
+      } else {
+        this.color = FastMath.hexToRgb("#A94459"); // Granate oscuro en puntas
+        this.isLighterCore = false;
+      }
+    }
+
+    // En Fase 2: Mezcla y depósito de pigmento en ColorGrid
     if (pId === 2) {
       const localC = sys.colorGrid.sample(this.x, this.y);
       this.color.r = FastMath.lerp(this.color.r, localC.r, 0.05 * tempo);
       this.color.g = FastMath.lerp(this.color.g, localC.g, 0.05 * tempo);
       this.color.b = FastMath.lerp(this.color.b, localC.b, 0.05 * tempo);
-      sys.colorGrid.deposit(this.x, this.y, this.color.r, this.color.g, this.color.b, 0.10 * tempo);
+      sys.colorGrid.deposit(this.x, this.y, this.color.r, this.color.g, this.color.b, 0.12 * tempo);
 
     } else if (pId === 4 && !sys.phase.rebirthActive) {
+      // Fase 4 Apagado hacia tinta oscura
       const cx = sys.width * 0.5;
       const cy = sys.height * 0.5;
       const dCenter = Math.sqrt((this.x - cx)*(this.x - cx) + (this.y - cy)*(this.y - cy));
       if (dCenter > sys.phase.extinctionRadius) {
-        // Tinta oscura nocturna (no gris)
-        this.color.r = FastMath.lerp(this.color.r, 0.05, 0.15 * tempo);
-        this.color.g = FastMath.lerp(this.color.g, 0.04, 0.15 * tempo);
-        this.color.b = FastMath.lerp(this.color.b, 0.07, 0.15 * tempo);
+        const factor = Math.min(1.0, (dCenter - sys.phase.extinctionRadius) / 100);
+        this.color.r = FastMath.lerp(this.color.r, 0.05, 0.12 * factor * tempo);
+        this.color.g = FastMath.lerp(this.color.g, 0.04, 0.12 * factor * tempo);
+        this.color.b = FastMath.lerp(this.color.b, 0.07, 0.12 * factor * tempo);
+        sys.colorGrid.deposit(this.x, this.y, 0.05, 0.04, 0.07, 0.15 * tempo);
       }
     }
 
-    if (this.r < 0.50 ||
-        this.x < -40 || this.x > sys.width + 40 ||
-        this.y < -40 || this.y > sys.height + 40) {
+    // Desprendimiento de hojas autónomas en Fase 1
+    if (pId === 1 && this.layerType === 'branch' && Math.random() < 0.0006) {
+      sys.spawnAutonomousLeaf(this.x, this.y);
+    }
+
+    if (this.r < 0.55 ||
+        this.x < -50 || this.x > sys.width + 50 ||
+        this.y < -50 || this.y > sys.height + 50) {
       this.reset();
     }
   }
 }
 
-// 6.2 FireflyAgent: Luciérnagas / Estrellas como Hebras Finas de Luz
+// 6.2 FireflyAgent: Luciérnagas (~45) con ciclo interno de energía y estado "giro"
 class FireflyAgent {
   constructor(sys) {
     this.sys = sys;
@@ -1209,19 +1291,76 @@ class FireflyAgent {
     this.py = this.y;
     this.vx = (Math.random() - 0.5) * 1.2;
     this.vy = (Math.random() - 0.5) * 1.2;
-    this.maxSpeed = 1.4 + Math.random() * 0.7;
+    this.maxSpeed = 1.3 + Math.random() * 0.6;
     this.maxForce = 0.08;
-    this.r = 1.1;
+    this.r = 1.3;
     this.wanderAngle = Math.random() * Math.PI * 2;
-    this.color = { r: 0.98, g: 0.94, b: 0.85 }; // Crema cálido
-    this.alpha = 0.35;
+    this.spinTimer = 0;
+    this.nextSpinTime = 4.0 + Math.random() * 5.0; // 4–9s no sincronizado
+    this.isSpinning = false;
+    this.spinCenter = { x: 0, y: 0 };
+    this.spinDir = Math.random() > 0.5 ? 1 : -1;
+    this.spinRadius = 14 + Math.random() * 16; // 14–30px
+    this.color = { r: 0.98, g: 0.88, b: 0.55 }; // Mantequilla contrastada
+    this.alpha = 0.45;
   }
   update(tempo, perceptionRadius, pulseIntensity) {
     this.px = this.x;
     this.py = this.y;
     const sys = this.sys;
-    const pId = sys.phase.id;
+    const pId = sys.phase.toId;
 
+    // En Fase 3 desaparecen las luciérnagas
+    if (pId === 3) {
+      this.alpha = Math.max(0, this.alpha - 0.05 * tempo);
+      return;
+    } else {
+      this.alpha = Math.min(0.45, this.alpha + 0.02 * tempo);
+    }
+
+    // Ciclo de energía autónomo para giros espirales
+    this.spinTimer += (tempo * 0.016);
+    if (!this.isSpinning && this.spinTimer >= this.nextSpinTime) {
+      this.isSpinning = true;
+      this.spinTimer = 0;
+      this.spinDuration = 1.5 + Math.random() * 1.5; // 1.5–3.0s
+      this.spinCenter = { x: this.x, y: this.y };
+      this.spinDir = Math.random() > 0.5 ? 1 : -1;
+      this.spinRadius = 14 + Math.random() * 16;
+    }
+
+    if (this.isSpinning) {
+      // Steering de órbita alrededor de su propio punto
+      const dx = this.x - this.spinCenter.x;
+      const dy = this.y - this.spinCenter.y;
+      const d = Math.sqrt(dx*dx + dy*dy) + 0.1;
+
+      // Fuerza tangencial + suave atracción centrípeta
+      const tangX = (-dy / d) * 2.0 * this.spinDir;
+      const tangY = (dx / d) * 2.0 * this.spinDir;
+      const centX = (this.spinCenter.x - this.x) * 0.08;
+      const centY = (this.spinCenter.y - this.y) * 0.08;
+
+      this.vx = FastMath.lerp(this.vx, tangX + centX, 0.15 * tempo);
+      this.vy = FastMath.lerp(this.vy, tangY + centY, 0.15 * tempo);
+
+      this.x += this.vx * tempo;
+      this.y += this.vy * tempo;
+
+      // Mayor contraste visual durante el giro
+      this.r = 1.8;
+      this.color = { r: 0.98, g: 0.88, b: 0.45 }; // Mantequilla brillante
+
+      if (this.spinTimer >= this.spinDuration) {
+        this.isSpinning = false;
+        this.spinTimer = 0;
+        this.nextSpinTime = 4.0 + Math.random() * 5.0;
+        this.r = 1.2;
+      }
+      return;
+    }
+
+    // Flocking Reynolds normal
     let sepX = 0, sepY = 0, countSep = 0;
     let aliX = 0, aliY = 0, countAli = 0;
     let cohX = 0, cohY = 0, countCoh = 0;
@@ -1254,16 +1393,11 @@ class FireflyAgent {
     const wanderY = Math.sin(this.wanderAngle) * 0.35;
 
     const targetX = sys.width * 0.5;
-    const targetY = sys.height * (pId === 3 ? 0.55 : 0.5);
+    const targetY = sys.height * 0.5;
     const toFireX = targetX - this.x;
     const toFireY = targetY - this.y;
-
-    let seekX = 0, seekY = 0;
-    if (pId === 1 || pId === 3) {
-      const seekW = pId === 3 ? 0.018 : 0.009;
-      seekX = toFireX * seekW;
-      seekY = toFireY * seekW;
-    }
+    const seekX = toFireX * 0.01;
+    const seekY = toFireY * 0.01;
 
     let pulseX = 0, pulseY = 0;
     if (pulseIntensity > 0.05) {
@@ -1288,7 +1422,7 @@ class FireflyAgent {
     this.vy += ay * tempo;
 
     const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    const maxS = this.maxSpeed * (pId === 3 ? 1.4 : (pId === 4 ? 0.35 : 1.0));
+    const maxS = this.maxSpeed * (pId === 4 ? 0.35 : 1.0);
     if (spd > maxS) {
       this.vx = (this.vx / spd) * maxS;
       this.vy = (this.vy / spd) * maxS;
@@ -1303,14 +1437,102 @@ class FireflyAgent {
     if (this.y > sys.height - 20) this.vy -= 0.2;
 
     if (pId === 4) {
-      this.color = sys.phase.rebirthActive ? { r: 0.85, g: 0.92, b: 0.98 } : { r: 0.65, g: 0.70, b: 0.80 };
+      this.color = sys.phase.rebirthActive ? { r: 0.85, g: 0.92, b: 0.98 } : { r: 0.70, g: 0.75, b: 0.85 };
     } else {
-      this.color = { r: 0.98, g: 0.94, b: 0.85 };
+      this.color = { r: 0.98, g: 0.90, b: 0.65 };
     }
   }
 }
 
-// 6.3 RainDropAgent: Gotas que Arrastran Pigmento de la ColorGrid (Sin Capa Blanca)
+// 6.3 SmokeAshAgent: Humo Helicoidal en Espiral Ascendente (#9C8BAA)
+class SmokeAshAgent {
+  constructor(sys, isAsh = false) {
+    this.sys = sys;
+    this.isAsh = isAsh;
+    this.reset();
+  }
+  reset() {
+    const sys = this.sys;
+    this.dead = false;
+    this.life = 0;
+    this.maxLife = 90 + Math.random() * 100;
+
+    if (this.isAsh) {
+      this.x = Math.random() * sys.width;
+      this.y = -10;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.vy = 0.5 + Math.random() * 0.6;
+      this.r = 1.1 * sys.heightScale;
+      this.color = FastMath.hexToRgb("#D9CFBD");
+      this.alpha = 0.24;
+    } else {
+      // Humo helicoidal nace en la fogata central
+      this.anchorX = sys.width * 0.5 + (Math.random() - 0.5) * 14;
+      this.anchorY = sys.height * 0.5 + (Math.random() - 0.5) * 10;
+      this.orbitAngle = Math.random() * Math.PI * 2;
+      this.helixRadius = 5.0;
+      this.x = this.anchorX + Math.cos(this.orbitAngle) * this.helixRadius;
+      this.y = this.anchorY + Math.sin(this.orbitAngle) * this.helixRadius;
+      this.r = 1.8 * sys.heightScale;
+      this.color = FastMath.hexToRgb("#9C8BAA"); // Lavanda grisácea oscura más visible
+      this.alpha = 0.32;
+    }
+    this.px = this.x;
+    this.py = this.y;
+  }
+  update(tempo, windVec = null) {
+    if (this.dead) return;
+    this.px = this.x;
+    this.py = this.y;
+    this.life += tempo;
+    const progress = this.life / this.maxLife;
+    const sys = this.sys;
+
+    if (this.isAsh) {
+      const flow = sys.flowField.getVector(this.x, this.y);
+      this.vx = FastMath.lerp(this.vx, flow.x * 0.6, 0.04 * tempo);
+      this.vy = FastMath.lerp(this.vy, flow.y * 0.5 + 0.45, 0.04 * tempo);
+      this.x += this.vx * tempo;
+      this.y += this.vy * tempo;
+    } else {
+      // Sube en hélice que se ensancha y desvanece
+      const flow = sys.flowField.getVector(this.anchorX, this.anchorY);
+      const buoyancy = -0.9;
+      this.anchorX += (flow.x * 0.7) * tempo;
+      this.anchorY += (flow.y * 0.5 + buoyancy) * tempo;
+
+      this.orbitAngle += (0.08 + (1.0 - progress) * 0.05) * tempo;
+      this.helixRadius += (0.35) * tempo; // Se ensancha
+
+      this.x = this.anchorX + Math.cos(this.orbitAngle) * this.helixRadius;
+      this.y = this.anchorY + Math.sin(this.orbitAngle) * this.helixRadius;
+
+      this.r = (1.8 + progress * 5.0) * sys.heightScale;
+      this.alpha = 0.32 * (1.0 - progress);
+    }
+
+    if (windVec && windVec.active) {
+      const dx = this.x - windVec.x;
+      const dy = this.y - windVec.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 320) {
+        const f = (1.0 - dist / 320) * windVec.strength;
+        this.anchorX += windVec.dirX * f * 3.0;
+        this.anchorY += windVec.dirY * f * 3.0;
+      }
+    }
+
+    if (this.life >= this.maxLife || this.y < -50 || this.y > sys.height + 50) {
+      if (this.isAsh && !sys.ashesActive) {
+        this.dead = true;
+      } else {
+        this.reset();
+      }
+    }
+  }
+}
+
+// 6.4 RainDropAgent: Gotas que Arrastran Pigmento sin Mancha Blanca
 class RainDropAgent {
   constructor(sys) {
     this.sys = sys;
@@ -1324,19 +1546,26 @@ class RainDropAgent {
     this.px = this.x;
     this.py = this.y;
     this.vx = (Math.random() - 0.5) * 0.3;
-    this.vy = 2.4 + Math.random() * 1.8; // Velocidad suave
-    this.r = 1.0;
+    this.vy = 2.4 + Math.random() * 1.8;
+    this.r = 1.6;
     this.dead = false;
 
-    // Muestrea el color inicial bajo él
-    const c = sys.colorGrid.sample(this.x, Math.max(0, this.y));
-    // Color del pigmento arrastrado: MISMO color con solo +7% luminosidad. NUNCA BLANCO.
+    // Muestreo con validación: no nacer con color de papel o fondo
+    let c = sys.colorGrid.sample(this.x, Math.max(0, this.y));
+    const paper = FastMath.hexToRgb("#E8DCC8");
+    if (FastMath.rgbDist(c, paper) < 0.08) {
+      // Re-muestrear sobre un trazo existente
+      const strokePos = sys.getRandomActiveAgent();
+      c = sys.colorGrid.sample(strokePos.x, strokePos.y);
+    }
+
+    // Mismo color arrastrado con +6% de luminosidad (NUNCA blanco)
     this.color = {
-      r: Math.min(1.0, c.r * 1.07),
-      g: Math.min(1.0, c.g * 1.07),
-      b: Math.min(1.0, c.b * 1.07)
+      r: Math.min(1.0, c.r * 1.06),
+      g: Math.min(1.0, c.g * 1.06),
+      b: Math.min(1.0, c.b * 1.06)
     };
-    this.alpha = 0.16 + Math.random() * 0.08;
+    this.alpha = 0.32 + Math.random() * 0.12;
   }
   update(tempo) {
     if (!this.active || this.dead) return;
@@ -1357,7 +1586,7 @@ class RainDropAgent {
     this.y += this.vy * tempo;
 
     if (pigmentDensity > 0.1) {
-      sys.colorGrid.drag(this.px, this.py, this.x, this.y, 0.16 * tempo);
+      sys.colorGrid.drag(this.px, this.py, this.x, this.y, 0.22 * tempo);
     }
 
     if (this.y > sys.height + 20 || this.x < -20 || this.x > sys.width + 20) {
@@ -1366,118 +1595,57 @@ class RainDropAgent {
   }
 }
 
-// 6.4 SmokeAshAgent: Humo con Radio Inverso (de fino a grueso) y Ceniza
-class SmokeAshAgent {
-  constructor(sys, isAsh = false) {
-    this.sys = sys;
-    this.isAsh = isAsh;
-    this.reset();
-  }
-  reset() {
-    const sys = this.sys;
-    const pId = sys.phase.id;
-    this.dead = false;
-    this.life = 0;
-    this.maxLife = 90 + Math.random() * 110;
-
-    if (this.isAsh) {
-      this.x = Math.random() * sys.width;
-      this.y = -10;
-      this.vx = (Math.random() - 0.5) * 0.4;
-      this.vy = 0.5 + Math.random() * 0.6;
-      this.r = (0.9 + Math.random() * 0.8) * sys.heightScale;
-      this.color = FastMath.hexToRgb("#D9CFBD");
-      this.alpha = 0.22;
-    } else {
-      // Humo nace en la fogata central
-      const cx = sys.width * 0.5;
-      const cy = sys.height * 0.5;
-      this.x = cx + (Math.random() - 0.5) * 16;
-      this.y = cy + (Math.random() - 0.5) * 12;
-      this.vx = (Math.random() - 0.5) * 0.5;
-      this.vy = -0.8 - Math.random() * 1.0;
-      this.r = 1.4 * sys.heightScale; // Nace fino y SE ENSANCHA
-      this.color = FastMath.hexToRgb("#B9A6C2"); // Lavanda grisácea suave pastel
-      this.alpha = 0.16;
-    }
-    this.px = this.x;
-    this.py = this.y;
-  }
-  update(tempo, intensity = 1.0, windVec = null) {
-    if (this.dead) return;
-    this.px = this.x;
-    this.py = this.y;
-    this.life += tempo;
-    const progress = this.life / this.maxLife;
-
-    const sys = this.sys;
-    const flow = sys.flowField.getVector(this.x, this.y);
-
-    if (this.isAsh) {
-      this.vx = FastMath.lerp(this.vx, flow.x * 0.6, 0.04 * tempo);
-      this.vy = FastMath.lerp(this.vy, flow.y * 0.5 + 0.45, 0.04 * tempo);
-    } else {
-      // Radio crece mientras la opacidad cae
-      this.r = (1.4 + progress * 5.5) * sys.heightScale;
-      this.alpha = 0.16 * (1.0 - progress);
-
-      const buoyancy = -0.65;
-      this.vx = FastMath.lerp(this.vx, flow.x * 0.9, 0.05 * tempo);
-      this.vy = FastMath.lerp(this.vy, flow.y * 0.6 + buoyancy, 0.05 * tempo);
-    }
-
-    if (windVec && windVec.active) {
-      const dx = this.x - windVec.x;
-      const dy = this.y - windVec.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < 320) {
-        const f = (1.0 - dist / 320) * windVec.strength;
-        this.vx += windVec.dirX * f * 2.5;
-        this.vy += windVec.dirY * f * 2.5;
-      }
-    }
-
-    this.x += this.vx * tempo;
-    this.y += this.vy * tempo;
-
-    if (this.life >= this.maxLife || this.y < -50 || this.y > sys.height + 50) {
-      if (this.isAsh && !sys.ashesActive) {
-        this.dead = true;
-      } else {
-        this.reset();
-      }
-    }
-  }
-}
-
-// 6.5 TenderVolute: "Cosita Tierna" melódica creada con el Clic del Ratón
+// 6.5 TenderVolute: Espiral Emergente creada por el Clic del Mouse (Steering Puro)
 class TenderVolute {
   constructor(sys, ox, oy, phaseId) {
     this.sys = sys;
     this.ox = ox;
     this.oy = oy;
-    this.radius = 25 + Math.random() * 35;
+    this.radius = 60 + Math.random() * 80; // 60–140px
     this.dir = Math.random() > 0.5 ? 1 : -1;
     this.life = 0;
-    this.maxLife = 120 + Math.random() * 80; // ~2–3.5 segundos
+    this.maxLife = 180 + Math.random() * 100; // 3–5 segundos
     this.dead = false;
 
-    // Micro-agentes de la voluta
-    const pCount = 8 + Math.floor(Math.random() * 5);
+    // Inyectar vórtice local temporal que curva trazos vecinos
+    sys.flowField.addDynamicVortex(ox, oy, this.radius * 1.4, this.dir, 1.6, 4.5);
+
+    // 20–36 agentes emergentes
+    const pCount = 22 + Math.floor(Math.random() * 12);
     this.particles = [];
-    const color = sys.pickTenderColor(phaseId);
+    const color = sys.pickContrastingAccentColor(ox, oy, phaseId);
 
     for (let i = 0; i < pCount; i++) {
       const angle = (i / pCount) * Math.PI * 2;
-      const rInit = this.radius * (0.8 + Math.random() * 0.4);
+      const rDist = this.radius * (0.3 + Math.random() * 0.7);
+      const initSpd = 1.8 + Math.random() * 1.2;
       this.particles.push({
-        x: ox + Math.cos(angle) * rInit,
-        y: oy + Math.sin(angle) * rInit,
-        px: ox + Math.cos(angle) * rInit,
-        py: oy + Math.sin(angle) * rInit,
-        angle: angle,
-        r: 1.0 + Math.random() * 0.5,
-        color: color
+        x: ox + Math.cos(angle) * rDist,
+        y: oy + Math.sin(angle) * rDist,
+        px: ox + Math.cos(angle) * rDist,
+        py: oy + Math.sin(angle) * rDist,
+        vx: -Math.sin(angle) * initSpd * this.dir,
+        vy: Math.cos(angle) * initSpd * this.dir,
+        r: 1.4 + Math.random() * 1.4,
+        color: color,
+        isSecondary: false
+      });
+    }
+
+    // 3–5 agentes secundarios orbitando al principal para rizos exteriores
+    for (let k = 0; k < 4; k++) {
+      const angle = Math.random() * Math.PI * 2;
+      const rDist = this.radius * (1.0 + Math.random() * 0.25);
+      this.particles.push({
+        x: ox + Math.cos(angle) * rDist,
+        y: oy + Math.sin(angle) * rDist,
+        px: ox + Math.cos(angle) * rDist,
+        py: oy + Math.sin(angle) * rDist,
+        vx: -Math.sin(angle) * 1.5 * this.dir,
+        vy: Math.cos(angle) * 1.5 * this.dir,
+        r: 1.0,
+        color: color,
+        isSecondary: true
       });
     }
   }
@@ -1489,59 +1657,68 @@ class TenderVolute {
       return;
     }
 
-    const decayR = Math.pow(1.0 - progress * 0.8, 0.7);
-    const angSpd = (0.05 + progress * 0.08) * this.dir * tempo;
-
+    // La espiral emerge por steering centrípeto y aceleración tangencial
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
       p.px = p.x;
       p.py = p.y;
-      p.angle += angSpd;
-      const curDist = this.radius * decayR;
-      p.x = this.ox + Math.cos(p.angle) * curDist;
-      p.y = this.oy + Math.sin(p.angle) * curDist;
-      p.alpha = 0.28 * (1.0 - progress);
+
+      const dx = p.x - this.ox;
+      const dy = p.y - this.oy;
+      const dist = Math.sqrt(dx*dx + dy*dy) + 0.1;
+
+      // Steering: aceleración angular al acercarse al centro + atracción centrípeta
+      const angSpd = (1.8 + (1.0 - dist / this.radius) * 2.2) * this.dir;
+      const tangX = (-dy / dist) * angSpd;
+      const tangY = (dx / dist) * angSpd;
+      const centX = (this.ox - p.x) * 0.045;
+      const centY = (this.oy - p.y) * 0.045;
+
+      p.vx = FastMath.lerp(p.vx, tangX + centX, 0.18 * tempo);
+      p.vy = FastMath.lerp(p.vy, tangY + centY, 0.18 * tempo);
+
+      p.x += p.vx * tempo;
+      p.y += p.vy * tempo;
+
+      p.alpha = (0.65 - progress * 0.5) * (p.isSecondary ? 0.7 : 1.0);
     }
   }
 }
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * MÓDULO 7: PhaseManager, Frentes Espaciales y Paletas Pastel Cohesivas
+ * MÓDULO 7: PhaseManager, Frentes Espaciales Dinámicos (fromId -> toId)
  * ══════════════════════════════════════════════════════════════════════════════
  */
 class PhaseManager {
   constructor(sys) {
     this.sys = sys;
+    this.fromId = 1;
+    this.toId = 1;
     this.id = 1;
-    this.targetId = 1;
     this.tempo = 0.6;
-    this.transTimer = 15.0;
-    this.transDuration = 14.0; // 12–18 segundos
+    this.transTimer = 14.0;
+    this.transDuration = 14.0;
     this.rebirthActive = false;
-    this.rebirthTimer = 0.0;
     this.extinctionRadius = 800;
 
-    // Paletas Pastel Cohesivas con crema y rosa polvo como hilo conductor
     this.phases = {
       1: {
         id: 1,
         name: "FASE 1 — El Bosque",
         tempo: 0.6,
         wPhys: 0.25,
-        physarumDesc: "Physarum en Fase 1 (w: 0.25): Aporta sutil venación y curvatura orgánica que rompe la rigidez en ramas y follaje.",
-        paperBg: "#E8DCC8",
-        // 5 Capas Composicionales
+        targetDensity: 0.50,
+        bgColor: "#E8DCC8",
+        physarumDesc: "Physarum en Fase 1 (w: 0.25): Sutil venación y curvatura orgánica que rompe la rigidez en ramas y follaje.",
         bgPal: ["#E8DCC8", "#D9CFBD", "#B9C6B5"],
-        trunkPal: ["#8C6F5E", "#7A6252", "#A38573"], // Moca, Cacao suave, Taupe
+        trunkPal: ["#8C6F5E", "#7A6252", "#A38573"],
         branchPal: ["#8C6F5E", "#A9B89A", "#B7C4A0"],
         groundPal: ["#7A6252", "#8FA384", "#D98B6A"],
         foliagePal: [
-          "#A9B89A", "#8FA384", "#B7C4A0", // Salvia, Musgo suave, Pistacho
-          "#E8B98A", "#E3A06F", "#D98B6A", // Durazno, Albaricoque, Terracota suave
-          "#EBC98E", "#D77F6B",             // Mantequilla, Coral suave
-          "#D9B5B0", "#B9A6C2",             // Rosa polvo, Lavanda grisácea
-          "#9FB1C0"                         // Acento azul grisáceo
+          "#A9B89A", "#8FA384", "#B7C4A0",
+          "#E8B98A", "#E3A06F", "#D98B6A",
+          "#EBC98E", "#D77F6B", "#D9B5B0", "#B9A6C2", "#9FB1C0"
         ]
       },
       2: {
@@ -1549,8 +1726,9 @@ class PhaseManager {
         name: "FASE 2 — Caída y Agua",
         tempo: 0.9,
         wPhys: 0.75,
-        physarumDesc: "Physarum en Fase 2 (w: 0.75): DOMINANCIA MÁXIMA. Los canales de feromona guían las hebras de escurrimiento donde el pigmento corre por surcos interconectados (Ref 3 y 4).",
-        // Misma paleta del bosque contaminada y arrastrada + acentos rosa polvo, oro suave y lavanda
+        targetDensity: 0.55,
+        bgColor: "#E8DCC8",
+        physarumDesc: "Physarum en Fase 2 (w: 0.75): DOMINANCIA MÁXIMA. Los canales guían las hebras de escurrimiento de pigmento (Ref 3 y 4).",
         palette: [
           "#A9B89A", "#8FA384", "#E8B98A", "#D98B6A", "#7A6252",
           "#E3BFC0", "#E9D3A0", "#C5B7D1"
@@ -1561,97 +1739,97 @@ class PhaseManager {
         name: "FASE 3 — La Fogata",
         tempo: 1.3,
         wPhys: 0.50,
-        physarumDesc: "Physarum en Fase 3 (w: 0.50): Se orienta con la convección térmica multidireccional desgajando filamentos finos.",
-        paperBg: "#0D0B12", // Tinta nocturna
-        emberPal: [
-          "#F08F7C", "#F4A38F", "#F6B891", "#F2A25F", "#F8DFA0" // Coral, Salmón, Durazno, Albaricoque, Mantequilla
-        ],
-        flamePal: [
-          "#FBF0D8", // Núcleo crema cálido
-          "#F6B891", "#F08F7C",
-          "#D96A7A", "#A94459" // Puntas rosa carmín y granate suave
-        ]
+        targetDensity: 0.85,
+        bgColor: "#0D0B12", // Tinta oscura
+        physarumDesc: "Physarum en Fase 3 (w: 0.50): Convección térmica multidireccional desgajando filamentos de llama.",
+        coalPal: ["#2B1626", "#3E1D2E", "#5A2539", "#7E2F3E"],
+        emberPal: ["#B5483F", "#D9694F", "#E9805F", "#F2A25F"],
+        flamePal: ["#F8DFA0", "#FBF0D8", "#F08F7C", "#D96A7A", "#A94459"]
       },
       4: {
         id: 4,
         name: "FASE 4 — Apagado y Renacimiento",
         tempo: 0.6,
         wPhys: 0.80,
-        physarumDesc: "Physarum en Fase 4 (w: 0.80): Organiza las filigranas guiando los trazos hacia las espirales áureas ornamentales (Ref 7).",
-        inkPal: ["#0D0B12", "#17141C", "#2A2531"],
+        targetDensity: 0.50,
+        bgColor: "#0D0B12",
+        rebirthBgColor: "#141A33",
+        physarumDesc: "Physarum en Fase 4 (w: 0.80): Organiza filigranas de acuarela guiando los trazos hacia espirales áureas (Ref 7).",
+        inkPal: ["#0D0B12", "#17141C", "#2A2531", "#2B1626"],
         rebirthPal: [
-          "#8FA6D8", "#A9C0E4", "#CFE0F3", "#B9B4E0", // Periwinkle, Azul polvo, Hielo, Lavanda
-          "#5F6FB3", "#F4F6FB", "#E8C9DA"             // Índigo suave, Blanco perla, Rosa pálido
+          "#CFE0F3", "#8FA6D8", "#A9C0E4", "#B9B4E0",
+          "#F4F6FB", "#3A4A8C", "#E8C9DA"
         ]
       }
     };
   }
   setTargetPhase(targetId) {
-    if (targetId < 1 || targetId > 4 || targetId === this.id) return;
-    this.targetId = targetId;
+    if (targetId < 1 || targetId > 4 || targetId === this.toId) return;
+    this.fromId = this.effectivePhaseAt(this.sys.width * 0.5, this.sys.height * 0.5);
+    this.toId = targetId;
     this.transTimer = 0.0; // Inicia frente espacial inmediato (<1s)
     if (targetId !== 4) this.rebirthActive = false;
     this.extinctionRadius = Math.max(this.sys.width, this.sys.height) * 0.9;
   }
   triggerRebirth() {
-    if (this.id === 4) {
+    if (this.toId === 4) {
       this.rebirthActive = true;
       this.rebirthTimer = 0.0;
       this.sys.spawnRebirthBurst();
     }
   }
   update(dt) {
-    // Avance del frente espacial de transición
     if (this.transTimer < this.transDuration) {
       this.transTimer += dt;
       if (this.transTimer >= this.transDuration) {
         this.transTimer = this.transDuration;
-        this.id = this.targetId;
+        this.fromId = this.toId;
+        this.id = this.toId;
       }
     }
-    const curP = this.phases[this.id];
-    const tgtP = this.phases[this.targetId];
+    const curP = this.phases[this.fromId];
+    const tgtP = this.phases[this.toId];
     const p = FastMath.clamp(this.transTimer / this.transDuration, 0, 1);
     this.tempo = FastMath.lerp(curP.tempo, tgtP.tempo, FastMath.smoothstep(0, 1, p));
 
-    if (this.rebirthActive) {
-      this.rebirthTimer += dt;
-    }
-
-    if (this.id === 4 && !this.rebirthActive) {
-      this.extinctionRadius = Math.max(35, this.extinctionRadius - 0.35 * this.tempo);
+    if (this.toId === 4 && !this.rebirthActive) {
+      // Contracción centrípeta de radio de extinción hasta ~12% del lado menor
+      const minRadius = Math.min(this.sys.width, this.sys.height) * 0.12;
+      this.extinctionRadius = Math.max(minRadius, this.extinctionRadius - 0.45 * this.tempo);
     }
   }
-  // Cálculo de mezcla según el frente espacial geométrico
   getSpatialBlend(x, y) {
     if (this.transTimer >= this.transDuration) return 1.0;
     const p = this.transTimer / this.transDuration;
     const sys = this.sys;
 
-    if (this.id === 1 && this.targetId === 2) {
+    if (this.fromId === 1 && this.toId === 2) {
       // F1 -> F2: De arriba hacia abajo
-      const frontY = p * (sys.height + 250) - 100;
-      return 1.0 - FastMath.smoothstep(frontY - 140, frontY + 140, y);
-    } else if (this.id === 2 && this.targetId === 3) {
+      const frontY = p * (sys.height + 200) - 100;
+      return 1.0 - FastMath.smoothstep(frontY - 120, frontY + 120, y);
+    } else if (this.fromId === 2 && this.toId === 3) {
       // F2 -> F3: Del centro hacia afuera
       const cx = sys.width * 0.5, cy = sys.height * 0.5;
       const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
       const frontR = p * maxR;
       const d = Math.sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy));
-      return 1.0 - FastMath.smoothstep(frontR - 160, frontR + 160, d);
-    } else if (this.id === 3 && this.targetId === 4) {
-      // F3 -> F4: De la periferia hacia el centro
+      return 1.0 - FastMath.smoothstep(frontR - 140, frontR + 140, d);
+    } else if (this.fromId === 3 && this.toId === 4) {
+      // F3 -> F4: De la periferia al centro
       const cx = sys.width * 0.5, cy = sys.height * 0.5;
       const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
       const frontR = (1.0 - p) * maxR;
       const d = Math.sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy));
-      return FastMath.smoothstep(frontR - 160, frontR + 160, d);
+      return FastMath.smoothstep(frontR - 140, frontR + 140, d);
     }
     return p;
   }
+  effectivePhaseAt(x, y) {
+    return this.getSpatialBlend(x, y) > 0.5 ? this.toId : this.fromId;
+  }
   getCurrentWPhys() {
-    const curP = this.phases[this.id];
-    const tgtP = this.phases[this.targetId];
+    const curP = this.phases[this.fromId];
+    const tgtP = this.phases[this.toId];
     const p = FastMath.clamp(this.transTimer / this.transDuration, 0, 1);
     return FastMath.lerp(curP.wPhys, tgtP.wPhys, FastMath.smoothstep(0, 1, p));
   }
@@ -1659,7 +1837,7 @@ class PhaseManager {
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════
- * MÓDULO 8: Particle & Visual Instrument Engine (Escalado por Densidad D)
+ * MÓDULO 8: Particle & Visual Instrument Engine (Render Batching & Transiciones)
  * ══════════════════════════════════════════════════════════════════════════════
  */
 class VisualInstrument {
@@ -1669,13 +1847,12 @@ class VisualInstrument {
 
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.heightScale = Math.max(0.65, Math.min(1.35, this.height / 1080));
+    this.heightScale = Math.max(0.7, Math.min(1.4, this.height / 1080));
 
-    // DENSIDAD OBJETIVO D (0.06 – 1.00)
-    this.targetDensity = 0.10; // F1 arranca casi vacía
-    this.currentDensity = 0.10;
+    this.targetDensity = 0.50;
+    this.currentDensity = 0.50;
     this.maxBrushAgents = 3800;
-    this.maxRainDrops = 220;
+    this.maxRainDrops = 180;
 
     this.perceptionRadius = 45;
     this.pulseVal = 0.0;
@@ -1697,11 +1874,14 @@ class VisualInstrument {
     this.ashAgents = [];
 
     this.renderBuckets = new Map();
+    this.renderBucketsLighter = new Map(); // Para núcleos de llamas (screen/lighter)
 
     this.lastTime = performance.now();
     this.fps = 60;
     this.framesCount = 0;
     this.fpsTimer = performance.now();
+    this.hudUpdateTimer = 0;
+    this.pastelSpiralTimer = 0;
 
     this.initCanvasAndPaper();
     this.initAgents();
@@ -1714,7 +1894,7 @@ class VisualInstrument {
   initCanvasAndPaper() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.heightScale = Math.max(0.65, Math.min(1.35, this.height / 1080));
+    this.heightScale = Math.max(0.7, Math.min(1.4, this.height / 1080));
     this.canvasPaint.width = this.width;
     this.canvasPaint.height = this.height;
 
@@ -1758,19 +1938,19 @@ class VisualInstrument {
     this.brushAgents = [];
     for (let i = 0; i < this.maxBrushAgents; i++) {
       let layer;
-      if (i < 800) layer = 'background';
-      else if (i < 1500) layer = 'trunk';
-      else if (i < 2200) layer = 'branch';
-      else if (i < 2900) layer = 'ground';
+      if (i < 700) layer = 'background';
+      else if (i < 1300) layer = 'trunk';
+      else if (i < 1900) layer = 'branch';
+      else if (i < 2500) layer = 'ground'; // Suelo con cuota garantizada (≥15%)
       else layer = 'foliage';
       const a = new BrushAgent(this, layer);
-      // Al inicio solo están activos una fracción correspondiente a D=0.10
       a.active = i < Math.floor(this.maxBrushAgents * this.targetDensity);
       this.brushAgents.push(a);
     }
 
+    // ~45 luciérnagas
     this.fireflies = [];
-    for (let i = 0; i < 110; i++) {
+    for (let i = 0; i < 45; i++) {
       this.fireflies.push(new FireflyAgent(this));
     }
 
@@ -1782,8 +1962,7 @@ class VisualInstrument {
     }
 
     this.smokeAgents = [];
-    // Humo solo en F1
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 60; i++) {
       this.smokeAgents.push(new SmokeAshAgent(this, false));
     }
 
@@ -1793,7 +1972,7 @@ class VisualInstrument {
   }
 
   pickColorForAgent(layerType, x, y) {
-    const pId = this.phase.id;
+    const pId = this.phase.effectivePhaseAt(x, y);
     let hex;
 
     if (pId === 1) {
@@ -1808,8 +1987,9 @@ class VisualInstrument {
       hex = pal[Math.floor(Math.random() * pal.length)];
     } else if (pId === 3) {
       const p3 = this.phase.phases[3];
-      const pal = (layerType === 'fire_flame') ? p3.flamePal : p3.emberPal;
-      hex = pal[Math.floor(Math.random() * pal.length)];
+      if (layerType === 'fire_coal') hex = p3.coalPal[Math.floor(Math.random() * p3.coalPal.length)];
+      else if (layerType === 'fire_ember') hex = p3.emberPal[Math.floor(Math.random() * p3.emberPal.length)];
+      else hex = p3.flamePal[Math.floor(Math.random() * p3.flamePal.length)];
     } else {
       const p4 = this.phase.phases[4];
       const pal = this.phase.rebirthActive ? p4.rebirthPal : p4.inkPal;
@@ -1817,8 +1997,7 @@ class VisualInstrument {
     }
 
     const base = FastMath.hexToRgb(hex);
-    // Jitter cromático pequeño (hue ±6°, sat ±6%, lum ±5%)
-    const j = (Math.random() - 0.5) * 0.035;
+    const j = (Math.random() - 0.5) * 0.03;
     return {
       r: FastMath.clamp(base.r + j, 0, 1),
       g: FastMath.clamp(base.g + j, 0, 1),
@@ -1826,11 +2005,19 @@ class VisualInstrument {
     };
   }
 
-  pickTenderColor(phaseId) {
-    if (phaseId === 1) return FastMath.hexToRgb("#D9B5B0"); // Rosa polvo
-    if (phaseId === 2) return FastMath.hexToRgb("#E3BFC0"); // Rosa polvo agua
-    if (phaseId === 3) return FastMath.hexToRgb("#FBF0D8"); // Crema cálido
-    return FastMath.hexToRgb("#CFE0F3"); // Hielo
+  // Regla de Contraste: asegura diferencia de luminosidad |ΔL| >= 0.25 con el fondo
+  pickContrastingAccentColor(x, y, phaseId) {
+    const bgLum = this.colorGrid.getLuminosity(x, y);
+    if (bgLum > 0.52) {
+      // Fondo claro (F1 / F2): colores con lum media-baja
+      if (phaseId === 1) return FastMath.hexToRgb("#D77F6B"); // Coral oscuro
+      if (phaseId === 2) return FastMath.hexToRgb("#7A6252"); // Moca profundo
+      return FastMath.hexToRgb("#5A2539"); // Ciruela
+    } else {
+      // Fondo oscuro (F3 / F4): colores claros intensos
+      if (phaseId === 3) return FastMath.hexToRgb("#FBF0D8"); // Crema cálido
+      return FastMath.hexToRgb("#CFE0F3"); // Hielo
+    }
   }
 
   getRandomActiveAgent() {
@@ -1844,27 +2031,75 @@ class VisualInstrument {
     return this.fireflies[Math.floor(Math.random() * this.fireflies.length)];
   }
 
+  // Hojas autónomas desprendidas en Fase 1
+  spawnAutonomousLeaf(ox, oy) {
+    const leafColors = ["#E8B98A", "#E3A06F", "#D98B6A", "#EBC98E", "#D77F6B"];
+    for (let i = 0; i < 4; i++) {
+      const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+      a.active = true;
+      a.dead = false;
+      a.layerType = 'ground';
+      a.life = 0;
+      a.x = ox + (Math.random() - 0.5) * 16;
+      a.y = oy + (Math.random() - 0.5) * 16;
+      a.px = a.x;
+      a.py = a.y;
+      a.r = (1.8 + Math.random() * 1.2) * this.heightScale;
+      a.decay = 0.994;
+      a.vx = (Math.random() - 0.5) * 1.5;
+      a.vy = 0.8 + Math.random() * 1.2;
+      a.color = FastMath.hexToRgb(leafColors[Math.floor(Math.random() * leafColors.length)]);
+    }
+  }
+
+  // Espirales pastel autónomas de Fase 2 (cada 6–14s)
+  spawnAutonomousPastelSpiral() {
+    const origin = this.getRandomActiveAgent();
+    const r = 70 + Math.random() * 80; // 70–150px
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    this.flowField.addDynamicVortex(origin.x, origin.y, r * 1.4, dir, 1.5, 10.0);
+
+    const pastelColors = ["#E3BFC0", "#E9D3A0", "#C5B7D1", "#B7C4A0", "#E8B98A"];
+    const col = FastMath.hexToRgb(pastelColors[Math.floor(Math.random() * pastelColors.length)]);
+
+    for (let i = 0; i < 18; i++) {
+      const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+      agent.active = true;
+      agent.dead = false;
+      agent.life = 0;
+      agent.r = (2.0 + Math.random() * 1.2) * this.heightScale;
+      agent.decay = 0.996;
+      const angle = (i / 18) * Math.PI * 2;
+      const dist = r * (0.4 + Math.random() * 0.6);
+      agent.x = origin.x + Math.cos(angle) * dist;
+      agent.y = origin.y + Math.sin(angle) * dist;
+      agent.px = agent.x;
+      agent.py = agent.y;
+      agent.vx = -Math.sin(angle) * 1.8 * dir;
+      agent.vy = Math.cos(angle) * 1.8 * dir;
+      agent.color = col;
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ACCIONES EXPRESIVAS POR TECLADO & RATÓN
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // [ESPACIO]: NUNCA depende del ratón. Brota desde un trazo existente
   triggerSpaceAction() {
-    const pId = this.phase.id;
+    const pId = this.phase.toId;
     const origin = this.getRandomActiveAgent();
     const ox = origin.x;
     const oy = origin.y;
 
     if (pId === 1) {
-      // Hojas otoñales naranjas pastel en rama existente
       const leafPal = ["#E8B98A", "#E3A06F", "#D98B6A", "#EBC98E", "#D77F6B", "#F6B891"];
       for (let i = 0; i < 350; i++) {
         const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
         agent.active = true;
         agent.dead = false;
         agent.life = 0;
-        agent.r = (1.8 + Math.random() * 1.5) * this.heightScale;
-        agent.decay = 0.992;
+        agent.r = (2.2 + Math.random() * 1.6) * this.heightScale;
+        agent.decay = 0.995;
 
         const angle = Math.random() * Math.PI * 2;
         const rad = 4 + Math.random() * 70;
@@ -1878,19 +2113,20 @@ class VisualInstrument {
       }
 
     } else if (pId === 2) {
-      // Mancha de agua translúcida desde un trazo existente
-      for (let i = 0; i < 50; i++) {
+      // Mancha de agua grande desde un trazo existente con arrastre
+      this.flowField.addDynamicVortex(ox, oy, 160, Math.random() > 0.5 ? 1 : -1, 1.5, 6.0);
+      for (let i = 0; i < 60; i++) {
         const drop = this.rainDrops[i];
         drop.active = true;
-        drop.x = ox + (Math.random() - 0.5) * 50;
-        drop.y = oy + (Math.random() - 0.5) * 50;
+        drop.x = ox + (Math.random() - 0.5) * 70;
+        drop.y = oy + (Math.random() - 0.5) * 70;
         drop.vx = (Math.random() - 0.5) * 2.5;
         drop.vy = 1.8 + Math.random() * 2.5;
       }
 
     } else if (pId === 3) {
-      // Lengua de llamas desde un foco existente
-      this.flowField.addDynamicVortex(ox, oy, 180, Math.random() > 0.5 ? 1 : -1, 1.4);
+      // Empuje de llamas ascendente desde un foco existente
+      this.flowField.addDynamicVortex(ox, oy, 220, Math.random() > 0.5 ? 1 : -1, 1.8, 6.0);
       for (let i = 0; i < 350; i++) {
         const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
         agent.active = true;
@@ -1898,98 +2134,109 @@ class VisualInstrument {
         agent.life = 0;
         agent.layerType = 'fire_flame';
         const a = Math.random() * Math.PI * 2;
-        const r = Math.random() * 70;
+        const r = Math.random() * 80;
         agent.x = ox + Math.cos(a) * r;
         agent.y = oy + Math.sin(a) * r;
         agent.px = agent.x;
         agent.py = agent.y;
-        agent.r = (2.2 + Math.random() * 1.6) * this.heightScale;
-        agent.decay = 0.988;
-        agent.vx = Math.cos(a + Math.PI*0.5) * 2.2;
-        agent.vy = -2.2 - Math.random() * 2.4;
+        agent.r = (2.6 + Math.random() * 2.0) * this.heightScale;
+        agent.decay = 0.985;
+        agent.vx = Math.cos(a + Math.PI*0.5) * 2.5;
+        agent.vy = -2.5 - Math.random() * 2.5;
         agent.color = FastMath.hexToRgb("#FBF0D8");
       }
 
     } else if (pId === 4) {
-      // Espiral áurea única de filigrana azul/blanca (Ref 7) desde un trazo existente
-      const spiralRadius = 60 + Math.random() * 100;
-      const spiralTightness = 0.16 + Math.random() * 0.14;
-      const spiralDir = Math.random() > 0.5 ? 1 : -1;
-      const totalTurns = 4 + Math.floor(Math.random() * 3);
-      const baseWidth = (2.4 + Math.random() * 1.8) * this.heightScale;
+      // 3–4 espirales áureas simultáneas emergentes por steering (Ref 7)
+      const countSpirals = this.phase.rebirthActive ? (3 + Math.floor(Math.random() * 2)) : 1;
+      for (let sIdx = 0; sIdx < countSpirals; sIdx++) {
+        const center = this.getRandomActiveAgent();
+        const sRadius = 120 + Math.random() * 100; // 120–220px
+        const sDir = Math.random() > 0.5 ? 1 : -1;
+        this.flowField.addDynamicVortex(center.x, center.y, sRadius * 1.5, sDir, 1.8, 10.0);
 
-      this.flowField.addDynamicVortex(ox, oy, spiralRadius * 1.4, spiralDir, 1.4);
-      this.physarum.deposit(ox, oy, 3.5);
+        // Agentes líder con trazo grueso (4–7px)
+        const leaders = 35 + Math.floor(Math.random() * 25);
+        for (let l = 0; l < leaders; l++) {
+          const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+          a.active = true;
+          a.dead = false;
+          a.life = 0;
+          a.r = (4.0 + Math.random() * 3.0) * this.heightScale;
+          a.decay = 0.997;
+          const ang = (l / leaders) * Math.PI * 2;
+          a.x = center.x + Math.cos(ang) * (sRadius * 0.7);
+          a.y = center.y + Math.sin(ang) * (sRadius * 0.7);
+          a.px = a.x;
+          a.py = a.y;
+          a.vx = -Math.sin(ang) * 2.0 * sDir;
+          a.vy = Math.cos(ang) * 2.0 * sDir;
+          a.color = FastMath.hexToRgb("#F4F6FB"); // Blanco perla
+        }
 
-      const agentCount = 280;
-      for (let i = 0; i < agentCount; i++) {
-        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
-        agent.active = true;
-        agent.dead = false;
-        agent.life = 0;
-
-        const fraction = i / agentCount;
-        const theta = fraction * Math.PI * 2 * totalTurns;
-        const rCurrent = spiralRadius * Math.exp(-spiralTightness * theta);
-        agent.x = ox + Math.cos(theta * spiralDir) * rCurrent;
-        agent.y = oy + Math.sin(theta * spiralDir) * rCurrent;
-        agent.px = agent.x;
-        agent.py = agent.y;
-
-        const angSpd = (1.4 / (rCurrent * 0.05 + 1.0));
-        agent.vx = -Math.sin(theta * spiralDir) * angSpd * spiralDir;
-        agent.vy = Math.cos(theta * spiralDir) * angSpd * spiralDir;
-
-        agent.r = baseWidth * (rCurrent / spiralRadius) + 0.6;
-        agent.decay = 0.995;
-        agent.color = Math.random() > 0.5 ? FastMath.hexToRgb("#F4F6FB") : FastMath.hexToRgb("#A9C0E4");
+        // ~150 secundarios con rizos
+        for (let sec = 0; sec < 150; sec++) {
+          const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+          a.active = true;
+          a.dead = false;
+          a.life = 0;
+          a.r = (1.8 + Math.random() * 1.6) * this.heightScale;
+          a.decay = 0.996;
+          const ang = Math.random() * Math.PI * 2;
+          const rad = sRadius * (0.2 + Math.random() * 0.8);
+          a.x = center.x + Math.cos(ang) * rad;
+          a.y = center.y + Math.sin(ang) * rad;
+          a.px = a.x;
+          a.py = a.y;
+          a.vx = -Math.sin(ang) * 1.6 * sDir;
+          a.vy = Math.cos(ang) * 1.6 * sDir;
+          a.color = FastMath.hexToRgb(this.phase.rebirthActive ? "#8FA6D8" : "#CFE0F3");
+        }
       }
     }
   }
 
-  // [Z]: Pulso del Intérprete
   triggerInterpreterPulse() {
     this.pulseVal = 1.0;
-    const pId = this.phase.id;
+    const pId = this.phase.toId;
 
     if (pId === 1) {
-      for (let i = 0; i < 30; i++) {
-        const s = new SmokeAshAgent(this, false);
-        s.vy *= 1.6;
-        this.smokeAgents.push(s);
+      // Tope de 150 humo, reciclando los más viejos
+      const budget = Math.max(0, 150 - this.smokeAgents.length);
+      for (let i = 0; i < Math.min(30, budget); i++) {
+        this.smokeAgents.push(new SmokeAshAgent(this, false));
       }
     } else if (pId === 2) {
-      // Ráfaga de lluvia escalonada
       for (let i = 0; i < this.rainDrops.length; i++) {
         const r = this.rainDrops[i];
-        if (Math.random() > 0.4) {
+        if (Math.random() > 0.3) {
           r.active = true;
           r.y = Math.random() * (this.height * 0.35);
-          r.vy += 2.0;
+          r.vy += 2.2;
         }
       }
     } else if (pId === 3) {
-      // Golpe de brasas desde los focos
-      for (let i = 0; i < 220; i++) {
+      for (let i = 0; i < 240; i++) {
         const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
         a.active = true;
         a.dead = false;
         a.life = 0;
         a.layerType = 'fire_ember';
+        const foc = this.flowField.fireFoci[Math.floor(Math.random() * this.flowField.fireFoci.length)];
         const ang = Math.random() * Math.PI * 2;
         const spd = 2.4 + Math.random() * 2.5;
-        a.x = this.width * 0.5;
-        a.y = this.height * 0.55;
+        a.x = foc.baseX;
+        a.y = foc.baseY;
         a.px = a.x;
         a.py = a.y;
-        a.r = 2.0 * this.heightScale;
+        a.r = 2.2 * this.heightScale;
         a.decay = 0.988;
         a.vx = Math.cos(ang) * spd;
         a.vy = Math.sin(ang) * spd;
         a.color = FastMath.hexToRgb("#FBF0D8");
       }
     } else if (pId === 4) {
-      for (let i = 0; i < 45; i++) {
+      for (let i = 0; i < 50; i++) {
         const drop = this.rainDrops[i];
         drop.active = true;
         drop.x = Math.random() * this.width;
@@ -2000,12 +2247,11 @@ class VisualInstrument {
     }
   }
 
-  // [CLIC DEL MOUSE]: "Cosita Tierna" melódica sobre un trazo existente
   triggerTenderClick() {
     const origin = this.getRandomActiveAgent();
-    const volute = new TenderVolute(this, origin.x, origin.y, this.phase.id);
+    const volute = new TenderVolute(this, origin.x, origin.y, this.phase.toId);
     this.tenderVolutes.push(volute);
-    if (this.tenderVolutes.length > 8) this.tenderVolutes.shift();
+    if (this.tenderVolutes.length > 6) this.tenderVolutes.shift(); // Tope 6 simultáneas
   }
 
   triggerWind(mx, my) {
@@ -2041,18 +2287,18 @@ class VisualInstrument {
   spawnRebirthBurst() {
     for (let i = 0; i < this.fireflies.length; i++) {
       const f = this.fireflies[i];
-      this.physarum.deposit(f.x, f.y, 3.5);
+      this.physarum.deposit(f.x, f.y, 4.0);
 
-      for (let j = 0; j < 14; j++) {
+      for (let j = 0; j < 16; j++) {
         const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
         agent.active = true;
         agent.dead = false;
         agent.life = 0;
-        agent.r = (1.5 + Math.random() * 1.5) * this.heightScale;
-        agent.decay = 0.995;
+        agent.r = (2.0 + Math.random() * 2.5) * this.heightScale;
+        agent.decay = 0.997;
 
         const ang = Math.random() * Math.PI * 2;
-        const rad = Math.random() * 25;
+        const rad = Math.random() * 30;
         agent.x = f.x + Math.cos(ang) * rad;
         agent.y = f.y + Math.sin(ang) * rad;
         agent.px = agent.x;
@@ -2080,8 +2326,8 @@ class VisualInstrument {
       else if (key === '2') this.phase.setTargetPhase(2);
       else if (key === '3') this.phase.setTargetPhase(3);
       else if (key === '4') this.phase.setTargetPhase(4);
-      else if (e.key === 'ArrowRight') this.phase.setTargetPhase(Math.min(4, this.phase.id + 1));
-      else if (e.key === 'ArrowLeft') this.phase.setTargetPhase(Math.max(1, this.phase.id - 1));
+      else if (e.key === 'ArrowRight') this.phase.setTargetPhase(Math.min(4, this.phase.toId + 1));
+      else if (e.key === 'ArrowLeft') this.phase.setTargetPhase(Math.max(1, this.phase.toId - 1));
 
       else if (e.code === 'Space') {
         e.preventDefault();
@@ -2100,12 +2346,11 @@ class VisualInstrument {
         this.phase.triggerRebirth();
       }
 
-      // Controles exclusivos de densidad D
       else if (e.key === 'ArrowUp') {
-        this.targetDensity = Math.min(1.0, this.targetDensity + 0.12);
+        this.targetDensity = Math.min(1.0, this.targetDensity + 0.10);
       }
       else if (e.key === 'ArrowDown') {
-        this.targetDensity = Math.max(0.06, this.targetDensity - 0.12);
+        this.targetDensity = Math.max(0.06, this.targetDensity - 0.10);
       }
       else if (key === 'a') {
         this.flowField.turbulence = Math.max(0.1, this.flowField.turbulence - 0.1);
@@ -2167,7 +2412,7 @@ class VisualInstrument {
   }
 
   updateHUDText() {
-    const pId = this.phase.id;
+    const pId = this.phase.toId;
     const hudPhase = document.getElementById('hud-phase-name');
     const hudTempo = document.getElementById('hud-tempo');
     const hudDensity = document.getElementById('hud-density');
@@ -2200,39 +2445,42 @@ class VisualInstrument {
     hudPhysDesc.innerHTML = `<strong>Physarum:</strong> ${this.phase.phases[pId].physarumDesc}`;
 
     if (pId === 1) hudSpace.textContent = "Hojas naranjas brotan de una rama existente";
-    else if (pId === 2) hudSpace.textContent = "Mancha de agua sobre un trazo existente";
+    else if (pId === 2) hudSpace.textContent = "Vórtice de agua y arrastre en trazo existente";
     else if (pId === 3) hudSpace.textContent = "Llamas ascendentes desde un foco";
-    else if (pId === 4) hudSpace.textContent = "Espiral áurea desde un trazo existente (Ref 7)";
+    else if (pId === 4) hudSpace.textContent = "3–4 espirales áureas desde trazos (Ref 7)";
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER BATCHING LIMPIO (lineCap: 'butt' sin perlas/cuentas)
+  // RENDER BATCHING LIMPIO (Cuantización exacta 15*17 = 255 y alpha min 0.04)
   // ══════════════════════════════════════════════════════════════════════════════
-  addSegment(px, py, x, y, r, g, b, a, width) {
-    const qR = Math.floor(r * 22) * 11;
-    const qG = Math.floor(g * 22) * 11;
-    const qB = Math.floor(b * 22) * 11;
-    const qA = Math.floor(a * 10) * 0.1;
-    const qW = Math.max(0.6, Math.round(width * 2) * 0.5);
+  addSegment(px, py, x, y, r, g, b, a, width, isLighter = false) {
+    const qR = Math.round(FastMath.clamp(r, 0, 1) * 15) * 17;
+    const qG = Math.round(FastMath.clamp(g, 0, 1) * 15) * 17;
+    const qB = Math.round(FastMath.clamp(b, 0, 1) * 15) * 17;
+    const qA = Math.max(0.04, Math.round(FastMath.clamp(a, 0, 1) * 25) * 0.04);
+    const qW = Math.max(0.8, Math.round(width * 2) * 0.5);
 
     const key = `${qR},${qG},${qB},${qA.toFixed(2)}|${qW.toFixed(1)}`;
-    let bucket = this.renderBuckets.get(key);
+    const map = isLighter ? this.renderBucketsLighter : this.renderBuckets;
+    let bucket = map.get(key);
     if (!bucket) {
       bucket = {
         style: `rgba(${qR},${qG},${qB},${qA})`,
         width: qW,
         coords: []
       };
-      this.renderBuckets.set(key, bucket);
+      map.set(key, bucket);
     }
     bucket.coords.push(px, py, x, y);
   }
 
   flushRenderBuckets() {
     const ctx = this.ctx;
-    ctx.lineCap = "butt"; // Evita perlas/cuentas en los extremos
-    ctx.lineJoin = "miter";
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "round";
 
+    // 1. Capa regular source-over
+    ctx.globalCompositeOperation = "source-over";
     this.renderBuckets.forEach((bucket) => {
       const coords = bucket.coords;
       const len = coords.length;
@@ -2248,6 +2496,27 @@ class VisualInstrument {
       ctx.stroke();
       bucket.coords.length = 0;
     });
+
+    // 2. Capa de brillo screen/lighter (para núcleos de llamas)
+    if (this.renderBucketsLighter.size > 0) {
+      ctx.globalCompositeOperation = "lighter";
+      this.renderBucketsLighter.forEach((bucket) => {
+        const coords = bucket.coords;
+        const len = coords.length;
+        if (len === 0) return;
+
+        ctx.strokeStyle = bucket.style;
+        ctx.lineWidth = bucket.width;
+        ctx.beginPath();
+        for (let i = 0; i < len; i += 4) {
+          ctx.moveTo(coords[i], coords[i + 1]);
+          ctx.lineTo(coords[i + 2], coords[i + 3]);
+        }
+        ctx.stroke();
+        bucket.coords.length = 0;
+      });
+      ctx.globalCompositeOperation = "source-over";
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2266,10 +2535,17 @@ class VisualInstrument {
       if (fpsEl) fpsEl.textContent = this.fps;
     }
 
-    // 1. Escalamiento asintótico de Densidad D
-    this.currentDensity += (this.targetDensity - this.currentDensity) * Math.min(1.0, dt / 6.5);
-    // Deriva lenta automática hacia 0.45 si nadie toca nada
-    this.targetDensity += (0.45 - this.targetDensity) * (dt * 0.015);
+    // Actualizar HUD cada 250ms
+    this.hudUpdateTimer += dt;
+    if (this.hudUpdateTimer >= 0.25) {
+      this.hudUpdateTimer = 0;
+      this.updateHUDText();
+    }
+
+    // 1. Escalamiento asintótico de Densidad D con atractor por fase
+    const phaseTargetD = this.phase.phases[this.phase.toId].targetDensity || 0.50;
+    this.targetDensity += (phaseTargetD - this.targetDensity) * (dt * 0.02);
+    this.currentDensity += (this.targetDensity - this.currentDensity) * Math.min(1.0, dt / 6.0);
 
     const targetActiveCount = Math.floor(this.currentDensity * this.maxBrushAgents);
     let currentActiveCount = 0;
@@ -2277,9 +2553,9 @@ class VisualInstrument {
       if (this.brushAgents[i].active) currentActiveCount++;
     }
 
-    // Nacimiento escalonado (máximo 4 agentes nuevos por frame, nunca de golpe)
+    // Nacimiento escalonado
     if (currentActiveCount < targetActiveCount) {
-      const spawnBudget = Math.min(4, targetActiveCount - currentActiveCount);
+      const spawnBudget = Math.min(5, targetActiveCount - currentActiveCount);
       let spawned = 0;
       for (let i = 0; i < this.brushAgents.length && spawned < spawnBudget; i++) {
         if (!this.brushAgents[i].active) {
@@ -2289,27 +2565,26 @@ class VisualInstrument {
         }
       }
     } else if (currentActiveCount > targetActiveCount + 10) {
-      // Desactivación suave al morir
       let toDeact = currentActiveCount - targetActiveCount;
       for (let i = 0; i < this.brushAgents.length && toDeact > 0; i++) {
-        if (this.brushAgents[i].active && this.brushAgents[i].r < 0.6) {
+        if (this.brushAgents[i].active && this.brushAgents[i].r < 0.65) {
           this.brushAgents[i].active = false;
           toDeact--;
         }
       }
     }
 
-    // Escalado de lluvia según densidad en F2
+    // Gotas de lluvia activas en F2
     const targetRainCount = Math.floor(this.currentDensity * this.maxRainDrops);
     for (let i = 0; i < this.rainDrops.length; i++) {
-      this.rainDrops[i].active = i < targetRainCount;
+      this.rainDrops[i].active = (this.phase.toId === 2 || this.phase.toId === 4) && (i < targetRainCount);
     }
 
-    // 2. Actualización de Fase y Tempos
+    // 2. Actualización de Fase, Tempos y Frentes Espaciales
     this.phase.update(dt);
     const tempo = this.phase.tempo;
     const wPhys = this.phase.getCurrentWPhys();
-    const pId = this.phase.id;
+    const pId = this.phase.toId;
 
     if (this.pulseVal > 0.001) {
       this.pulseVal *= Math.max(0.85, 1.0 - 0.08 * tempo);
@@ -2322,10 +2597,19 @@ class VisualInstrument {
       if (this.windVec.strength < 0.02) this.windVec.active = false;
     }
 
-    // 3. Actualización de Campo, Physarum y Cobertura
+    // 3. Campo de Flujo, Physarum y Cobertura
     this.flowField.update(this.phase, tempo, now, this.pulseVal, this.windVec);
     this.physarum.update(tempo);
     this.coverageMap.decay(0.996);
+
+    // Espirales pastel autónomas en Fase 2 (cada 6–14s)
+    if (pId === 2) {
+      this.pastelSpiralTimer += dt;
+      if (this.pastelSpiralTimer >= 9.0) {
+        this.pastelSpiralTimer = 0;
+        this.spawnAutonomousPastelSpiral();
+      }
+    }
 
     // 4. Grilla Espacial para Flocking
     this.spatialGrid.clear();
@@ -2333,20 +2617,51 @@ class VisualInstrument {
       this.spatialGrid.insert(this.fireflies[i]);
     }
 
-    // 5. Fade / Limpieza Sutilísima del Papel (Cero blanqueamiento, desactivada en F2)
+    // 5. CAMBIO DE FONDO EN LA BANDA DEL FRENTE ESPACIAL (alpha 0.08–0.14)
     const ctx = this.ctx;
-    if (pId === 1) {
-      ctx.fillStyle = "rgba(232, 220, 200, 0.0007)"; // Casi imperceptible
-      ctx.fillRect(0, 0, this.width, this.height);
-    } else if (pId === 3) {
-      ctx.fillStyle = "rgba(13, 11, 18, 0.0012)"; // Tinta oscura
-      ctx.fillRect(0, 0, this.width, this.height);
-    } else if (pId === 4 && !this.phase.rebirthActive) {
-      ctx.fillStyle = "rgba(13, 11, 18, 0.0012)";
-      ctx.fillRect(0, 0, this.width, this.height);
-    }
+    ctx.save();
+    if (this.phase.transTimer < this.phase.transDuration) {
+      const p = this.phase.transTimer / this.phase.transDuration;
+      const cx = this.width * 0.5, cy = this.height * 0.5;
 
-    // 6. Encolado de Trazos
+      if (this.phase.fromId === 2 && this.phase.toId === 3) {
+        // F2 -> F3: Del centro hacia afuera pasa a tinta oscura #0D0B12
+        const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
+        const frontR = p * maxR;
+        ctx.fillStyle = "rgba(13, 11, 18, 0.10)";
+        ctx.beginPath();
+        ctx.arc(cx, cy, frontR, 0, Math.PI * 2);
+        ctx.fill();
+        this.colorGrid.deposit(cx, cy, 0.05, 0.04, 0.07, 0.12);
+
+      } else if (this.phase.fromId === 3 && this.phase.toId === 4) {
+        // F3 -> F4: De la periferia al centro
+        const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
+        const frontR = (1.0 - p) * maxR;
+        ctx.fillStyle = "rgba(13, 11, 18, 0.10)";
+        ctx.beginPath();
+        ctx.rect(0, 0, this.width, this.height);
+        ctx.arc(cx, cy, frontR, 0, Math.PI * 2, true);
+        ctx.fill();
+
+      } else if (this.phase.toId === 4 && this.phase.rebirthActive) {
+        // Renacimiento (B): Fondo pasa de tinta a azul-tinta #141A33 desde las estrellas
+        ctx.fillStyle = "rgba(20, 26, 51, 0.09)";
+        ctx.fillRect(0, 0, this.width, this.height);
+      }
+    } else {
+      // Estado sostenido post-transición
+      if (pId === 3 || (pId === 4 && !this.phase.rebirthActive)) {
+        ctx.fillStyle = "rgba(13, 11, 18, 0.005)"; // Mantenimiento tinta
+        ctx.fillRect(0, 0, this.width, this.height);
+      } else if (pId === 4 && this.phase.rebirthActive) {
+        ctx.fillStyle = "rgba(20, 26, 51, 0.005)"; // Mantenimiento azul-tinta
+        ctx.fillRect(0, 0, this.width, this.height);
+      }
+    }
+    ctx.restore();
+
+    // 6. Encolado de Trazos con Render Batching
 
     // 6.1 Agentes de Trazo (Pincel)
     const bLen = this.brushAgents.length;
@@ -2358,8 +2673,8 @@ class VisualInstrument {
       const dx = a.x - a.px;
       const dy = a.y - a.py;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist > 0.25 && dist < 45) {
-        this.addSegment(a.px, a.py, a.x, a.y, a.color.r, a.color.g, a.color.b, a.alpha, a.r * 2.0);
+      if (dist > 0.25 && dist < 50) {
+        this.addSegment(a.px, a.py, a.x, a.y, a.color.r, a.color.g, a.color.b, a.alpha, a.r * 2.0, a.isLighterCore);
       }
     }
 
@@ -2372,20 +2687,20 @@ class VisualInstrument {
       const dx = f.x - f.px;
       const dy = f.y - f.py;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist > 0.25 && dist < 40) {
+      if (dist > 0.25 && dist < 45) {
         this.addSegment(f.px, f.py, f.x, f.y, f.color.r, f.color.g, f.color.b, f.alpha, f.r * 2.0);
       }
     }
 
-    // 6.3 Humo solo en F1
-    if (pId === 1) {
+    // 6.3 Humo helicoidal solo en F1
+    if (this.phase.fromId === 1 || this.phase.toId === 1) {
       for (let i = 0; i < this.smokeAgents.length; i++) {
         const sm = this.smokeAgents[i];
-        sm.update(tempo, 1.0, this.windVec);
+        sm.update(tempo, this.windVec);
         const dx = sm.x - sm.px;
         const dy = sm.y - sm.py;
         const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist > 0.25 && dist < 40) {
+        if (dist > 0.25 && dist < 45) {
           this.addSegment(sm.px, sm.py, sm.x, sm.y, sm.color.r, sm.color.g, sm.color.b, sm.alpha, sm.r * 2.0);
         }
       }
@@ -2395,12 +2710,12 @@ class VisualInstrument {
     if (pId === 1 && this.ashesActive) {
       for (let i = 0; i < this.ashAgents.length; i++) {
         const ash = this.ashAgents[i];
-        ash.update(tempo, 1.0, this.windVec);
+        ash.update(tempo, this.windVec);
         this.addSegment(ash.px, ash.py, ash.x, ash.y, ash.color.r, ash.color.g, ash.color.b, ash.alpha, ash.r * 2.0);
       }
     }
 
-    // 6.4 Gotas de Lluvia (Fase 2 y 4) - Arrastran pigmento sin blanquear
+    // 6.4 Gotas de Lluvia (Fase 2 y 4) - Arrastran pigmento en canales
     if (pId === 2 || pId === 4) {
       for (let i = 0; i < this.rainDrops.length; i++) {
         const drop = this.rainDrops[i];
