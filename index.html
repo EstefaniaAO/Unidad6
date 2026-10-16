@@ -288,6 +288,7 @@ Fase 4 — Apagado y Renacimiento (Tempo = 0.6)
     <div class="metric-item"><span>Turbulencia [A/D]:</span> <strong id="hud-turb">0.45</strong></div>
     <div class="metric-item"><span>Frente Transición:</span> <strong id="hud-front">Completa</strong></div>
     <div class="metric-item"><span>Percepción [S]:</span> <strong id="hud-percep">45px</strong></div>
+    <div class="metric-item"><span>Rastro [M]:</span> <strong id="hud-memory">Dinámico</strong></div>
     <div class="metric-item"><span>Cenizas [C]:</span> <strong id="hud-ashes">Apagadas</strong></div>
   </div>
 
@@ -298,6 +299,7 @@ Fase 4 — Apagado y Renacimiento (Tempo = 0.6)
   <h2>Teclas Expresivas (Independientes del Mouse)</h2>
   <table class="keys-table">
     <tr class="highlight"><td class="key-col">[ESPACIO]</td><td id="hud-key-space">Hojas naranjas brotan de una rama existente</td></tr>
+    <tr class="highlight"><td class="key-col">[M]</td><td id="hud-key-m">Alternar rastro: Guardar pintura / Dinámico (F3 y F4)</td></tr>
     <tr class="highlight"><td class="key-col">[Z]</td><td id="hud-key-z">Pulso del intérprete (expansión + dispersión)</td></tr>
     <tr><td class="key-col">[Clic]</td><td>"Cosita tierna": espiral emergente sobre un trazo al azar</td></tr>
     <tr><td class="key-col">[X] / [C]</td><td id="hud-key-xc">X: Viento hacia ratón | C: Conmutar cenizas</td></tr>
@@ -307,6 +309,7 @@ Fase 4 — Apagado y Renacimiento (Tempo = 0.6)
   <h2>Navegación y Parámetros</h2>
   <table class="keys-table">
     <tr><td class="key-col">[1]..[4]</td><td>Transición por frente espacial (<1s inicio, fondo en frente)</td></tr>
+    <tr><td class="key-col">[M]</td><td>Fijar o liberar rastro de pintura en escena</td></tr>
     <tr><td class="key-col">[↑] / [↓]</td><td>Densidad objetivo D</td></tr>
     <tr><td class="key-col">[←] / [→]</td><td>Fase anterior / siguiente</td></tr>
     <tr><td class="key-col">[R]</td><td>Regenerar semilla del campo</td></tr>
@@ -1495,20 +1498,21 @@ class SmokeAshAgent {
       this.x += this.vx * tempo;
       this.y += this.vy * tempo;
     } else {
-      // Sube en hélice que se ensancha y desvanece
+      // Sube en hélice curvada que se ensancha y desaparece
       const flow = sys.flowField.getVector(this.anchorX, this.anchorY);
-      const buoyancy = -0.9;
-      this.anchorX += (flow.x * 0.7) * tempo;
-      this.anchorY += (flow.y * 0.5 + buoyancy) * tempo;
+      const buoyancy = -1.1;
+      const sway = Math.sin(this.life * 0.035 + this.orbitAngle) * 0.45;
+      this.anchorX += (flow.x * 0.65 + sway) * tempo;
+      this.anchorY += (flow.y * 0.4 + buoyancy) * tempo;
 
-      this.orbitAngle += (0.08 + (1.0 - progress) * 0.05) * tempo;
-      this.helixRadius += (0.35) * tempo; // Se ensancha
+      this.orbitAngle += (0.07 + (1.0 - progress) * 0.04) * tempo;
+      this.helixRadius += 0.42 * tempo; // Se ensancha suavemente
 
       this.x = this.anchorX + Math.cos(this.orbitAngle) * this.helixRadius;
       this.y = this.anchorY + Math.sin(this.orbitAngle) * this.helixRadius;
 
-      this.r = (1.8 + progress * 5.0) * sys.heightScale;
-      this.alpha = 0.32 * (1.0 - progress);
+      this.r = (1.8 + progress * 6.0) * sys.heightScale;
+      this.alpha = 0.35 * Math.max(0, 1.0 - progress);
     }
 
     if (windVec && windVec.active) {
@@ -1522,11 +1526,13 @@ class SmokeAshAgent {
       }
     }
 
-    if (this.life >= this.maxLife || this.y < -50 || this.y > sys.height + 50) {
-      if (this.isAsh && !sys.ashesActive) {
-        this.dead = true;
+    if (this.life >= this.maxLife || this.y < -50 || this.alpha <= 0.01) {
+      if (this.isAsh) {
+        if (!sys.ashesActive) this.dead = true;
+        else this.reset();
       } else {
-        this.reset();
+        // El humo sale una sola vez, se curva hacia arriba y desaparece (no se repite)
+        this.dead = true;
       }
     }
   }
@@ -1730,8 +1736,18 @@ class PhaseManager {
         bgColor: "#E8DCC8",
         physarumDesc: "Physarum en Fase 2 (w: 0.75): DOMINANCIA MÁXIMA. Los canales guían las hebras de escurrimiento de pigmento (Ref 3 y 4).",
         palette: [
-          "#A9B89A", "#8FA384", "#E8B98A", "#D98B6A", "#7A6252",
-          "#E3BFC0", "#E9D3A0", "#C5B7D1"
+          // Verdes salvia, azulados y musgo acuoso
+          "#4E878C", "#659B92", "#7FA99B", "#A9B89A", "#8FA384", "#5E8271",
+          // Azules lavados de lluvia, cielo tormentoso e índigo suave
+          "#5C768D", "#6F8FA8", "#8CA1C4", "#7B82A6", "#4A6B82",
+          // Lilas, lavandas y ciruelas empolvadas
+          "#A288A6", "#B59BB8", "#C5B7D1", "#96728A", "#846B85",
+          // Rosas acuarela, rubor y acentos coral suave
+          "#D99B9B", "#E3BFC0", "#E8A598", "#DA8275", "#C46D65",
+          // Ámbar miel, oro suave y ocre
+          "#E9D3A0", "#E8B98A", "#E0AB6A", "#D98B6A", "#C67B54", "#EBC98E",
+          // Tierras húmedas y moca
+          "#7A6252", "#8C6F5E", "#5E7153"
         ]
       },
       3: {
@@ -1857,6 +1873,7 @@ class VisualInstrument {
     this.perceptionRadius = 45;
     this.pulseVal = 0.0;
     this.ashesActive = false;
+    this.paintMemoryMode = false; // [M] Alternar rastro permanente de pintura vs dinámico en F3/F4
     this.windVec = { x: 0, y: 0, dirX: 1, dirY: 0, strength: 0, active: false };
 
     this.phase = new PhaseManager(this);
@@ -1948,11 +1965,8 @@ class VisualInstrument {
       this.brushAgents.push(a);
     }
 
-    // ~45 luciérnagas
+    // Luciérnagas eliminadas por completo al inicio
     this.fireflies = [];
-    for (let i = 0; i < 45; i++) {
-      this.fireflies.push(new FireflyAgent(this));
-    }
 
     this.rainDrops = [];
     for (let i = 0; i < this.maxRainDrops; i++) {
@@ -1961,9 +1975,12 @@ class VisualInstrument {
       this.rainDrops.push(r);
     }
 
+    // Humo: sale una sola vez en la fogata central, se curva hacia arriba y desaparece
     this.smokeAgents = [];
-    for (let i = 0; i < 60; i++) {
-      this.smokeAgents.push(new SmokeAshAgent(this, false));
+    for (let i = 0; i < 40; i++) {
+      const sm = new SmokeAshAgent(this, false);
+      sm.life = i * 2.5; // Escalona el nacimiento para una pluma continua que sube y se esfuma
+      this.smokeAgents.push(sm);
     }
 
     this.ashAgents = [];
@@ -2059,7 +2076,10 @@ class VisualInstrument {
     const dir = Math.random() > 0.5 ? 1 : -1;
     this.flowField.addDynamicVortex(origin.x, origin.y, r * 1.4, dir, 1.5, 10.0);
 
-    const pastelColors = ["#E3BFC0", "#E9D3A0", "#C5B7D1", "#B7C4A0", "#E8B98A"];
+    const pastelColors = [
+      "#E3BFC0", "#E9D3A0", "#C5B7D1", "#6F8FA8",
+      "#8CA1C4", "#659B92", "#A288A6", "#D99B9B", "#E8A598"
+    ];
     const col = FastMath.hexToRgb(pastelColors[Math.floor(Math.random() * pastelColors.length)]);
 
     for (let i = 0; i < 18; i++) {
@@ -2113,15 +2133,50 @@ class VisualInstrument {
       }
 
     } else if (pId === 2) {
-      // Mancha de agua grande desde un trazo existente con arrastre
-      this.flowField.addDynamicVortex(ox, oy, 160, Math.random() > 0.5 ? 1 : -1, 1.5, 6.0);
-      for (let i = 0; i < 60; i++) {
+      // Eclosión de acuarela viva y vórtice húmedo con arrastre visible
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      this.flowField.addDynamicVortex(ox, oy, 240, dir, 2.0, 9.0);
+      this.physarum.deposit(ox, oy, 6.0);
+
+      const splashColors = [
+        "#4E878C", "#5C768D", "#6F8FA8", "#8CA1C4", "#7B82A6",
+        "#A288A6", "#B59BB8", "#C5B7D1", "#D99B9B", "#E3BFC0",
+        "#E8A598", "#E9D3A0", "#E8B98A", "#659B92"
+      ];
+
+      // 320 trazos de pincel de acuarela gruesos y bien pigmentados
+      for (let i = 0; i < 320; i++) {
+        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        agent.active = true;
+        agent.dead = false;
+        agent.life = 0;
+        agent.r = (3.2 + Math.random() * 2.5) * this.heightScale; // Trazos ricos de 3–6px
+        agent.decay = 0.996;
+        agent.alpha = 0.50 + Math.random() * 0.20; // Claramente visible, pigmento denso
+
+        const ang = Math.random() * Math.PI * 2;
+        const rad = 6 + Math.random() * 95;
+        agent.x = ox + Math.cos(ang) * rad;
+        agent.y = oy + Math.sin(ang) * rad;
+        agent.px = agent.x;
+        agent.py = agent.y;
+
+        const spd = 1.6 + Math.random() * 2.4;
+        agent.vx = Math.cos(ang) * spd - Math.sin(ang) * 1.8 * dir;
+        agent.vy = Math.sin(ang) * spd + Math.cos(ang) * 1.8 * dir + 0.9; // Flujo hacia abajo y en remolino
+        agent.color = FastMath.hexToRgb(splashColors[Math.floor(Math.random() * splashColors.length)]);
+        this.colorGrid.deposit(agent.x, agent.y, agent.color.r, agent.color.g, agent.color.b, 0.35);
+      }
+
+      // Gotas que arrastran de inmediato este charco de color nuevo
+      for (let i = 0; i < 80 && i < this.rainDrops.length; i++) {
         const drop = this.rainDrops[i];
         drop.active = true;
-        drop.x = ox + (Math.random() - 0.5) * 70;
-        drop.y = oy + (Math.random() - 0.5) * 70;
-        drop.vx = (Math.random() - 0.5) * 2.5;
-        drop.vy = 1.8 + Math.random() * 2.5;
+        drop.x = ox + (Math.random() - 0.5) * 110;
+        drop.y = oy + (Math.random() - 0.5) * 60;
+        drop.vx = (Math.random() - 0.5) * 2.2 + dir * 0.8;
+        drop.vy = 2.4 + Math.random() * 2.8;
+        drop.alpha = 0.48;
       }
 
     } else if (pId === 3) {
@@ -2201,10 +2256,13 @@ class VisualInstrument {
     const pId = this.phase.toId;
 
     if (pId === 1) {
-      // Tope de 150 humo, reciclando los más viejos
-      const budget = Math.max(0, 150 - this.smokeAgents.length);
-      for (let i = 0; i < Math.min(30, budget); i++) {
-        this.smokeAgents.push(new SmokeAshAgent(this, false));
+      // Pulso suave en el follaje del bosque
+      for (let i = 0; i < 40; i++) {
+        const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        if (a.active) {
+          a.vx += (Math.random() - 0.5) * 1.2;
+          a.vy -= 0.6;
+        }
       }
     } else if (pId === 2) {
       for (let i = 0; i < this.rainDrops.length; i++) {
@@ -2285,9 +2343,12 @@ class VisualInstrument {
   }
 
   spawnRebirthBurst() {
-    for (let i = 0; i < this.fireflies.length; i++) {
-      const f = this.fireflies[i];
-      this.physarum.deposit(f.x, f.y, 4.0);
+    const cx = this.width * 0.5;
+    const cy = this.height * 0.5;
+    for (let i = 0; i < 24; i++) {
+      const starX = cx + (Math.random() - 0.5) * this.width * 0.85;
+      const starY = cy + (Math.random() - 0.5) * this.height * 0.8;
+      this.physarum.deposit(starX, starY, 4.0);
 
       for (let j = 0; j < 16; j++) {
         const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
@@ -2299,8 +2360,8 @@ class VisualInstrument {
 
         const ang = Math.random() * Math.PI * 2;
         const rad = Math.random() * 30;
-        agent.x = f.x + Math.cos(ang) * rad;
-        agent.y = f.y + Math.sin(ang) * rad;
+        agent.x = starX + Math.cos(ang) * rad;
+        agent.y = starY + Math.sin(ang) * rad;
         agent.px = agent.x;
         agent.py = agent.y;
         agent.vx = Math.cos(ang) * 1.4;
@@ -2341,6 +2402,9 @@ class VisualInstrument {
       }
       else if (key === 'c') {
         this.toggleAshes();
+      }
+      else if (key === 'm') {
+        this.paintMemoryMode = !this.paintMemoryMode;
       }
       else if (key === 'b') {
         this.phase.triggerRebirth();
@@ -2420,6 +2484,7 @@ class VisualInstrument {
     const hudTurb = document.getElementById('hud-turb');
     const hudFront = document.getElementById('hud-front');
     const hudPercep = document.getElementById('hud-percep');
+    const hudMemory = document.getElementById('hud-memory');
     const hudAshes = document.getElementById('hud-ashes');
     const hudPhysDesc = document.getElementById('hud-physarum-desc');
     const hudSpace = document.getElementById('hud-key-space');
@@ -2432,7 +2497,8 @@ class VisualInstrument {
       4: "FASE 4 — Apagado y Renacimiento"
     };
     hudPhase.textContent = names[pId];
-    quickPill.textContent = `${names[pId]} (D: ${this.currentDensity.toFixed(2)}) | [H] Info`;
+    const memLabel = this.paintMemoryMode ? " | Rastro: FIJADO [M]" : "";
+    quickPill.textContent = `${names[pId]} (D: ${this.currentDensity.toFixed(2)})${memLabel} | [H] Info`;
 
     hudTempo.textContent = this.phase.tempo.toFixed(2);
     hudDensity.textContent = `${this.currentDensity.toFixed(2)} (obj: ${this.targetDensity.toFixed(2)})`;
@@ -2441,13 +2507,17 @@ class VisualInstrument {
     hudTurb.textContent = this.flowField.turbulence.toFixed(2);
     hudFront.textContent = this.phase.transTimer < this.phase.transDuration ? `${((this.phase.transTimer / this.phase.transDuration)*100).toFixed(0)}%` : "Completa";
     hudPercep.textContent = `${this.perceptionRadius}px`;
+    if (hudMemory) {
+      hudMemory.textContent = this.paintMemoryMode ? "FIJADO (Guarda rastro)" : "Dinámico";
+      hudMemory.style.color = this.paintMemoryMode ? "#9c3f25" : "";
+    }
     hudAshes.textContent = this.ashesActive ? "Activas" : "Apagadas";
     hudPhysDesc.innerHTML = `<strong>Physarum:</strong> ${this.phase.phases[pId].physarumDesc}`;
 
-    if (pId === 1) hudSpace.textContent = "Hojas naranjas brotan de una rama existente";
-    else if (pId === 2) hudSpace.textContent = "Vórtice de agua y arrastre en trazo existente";
-    else if (pId === 3) hudSpace.textContent = "Llamas ascendentes desde un foco";
-    else if (pId === 4) hudSpace.textContent = "3–4 espirales áureas desde trazos (Ref 7)";
+    if (pId === 1) hudSpace.textContent = "Hojas otoñales brotan de una rama existente";
+    else if (pId === 2) hudSpace.textContent = "Eclosión de acuarela viva y vórtice en trazo existente";
+    else if (pId === 3) hudSpace.textContent = this.paintMemoryMode ? "Llamas persistentes (quedan pintadas en el lienzo)" : "Llamas ascendentes desde un foco (dinámicas)";
+    else if (pId === 4) hudSpace.textContent = this.paintMemoryMode ? "Espirales áureas persistentes (quedan pintadas)" : "3–4 espirales áureas desde trazos (Ref 7)";
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2649,8 +2719,8 @@ class VisualInstrument {
         ctx.fillStyle = "rgba(20, 26, 51, 0.09)";
         ctx.fillRect(0, 0, this.width, this.height);
       }
-    } else {
-      // Estado sostenido post-transición
+    } else if (!this.paintMemoryMode) {
+      // Modo dinámico (default): sutil fade para mantener partículas en movimiento sin acumular
       if (pId === 3 || (pId === 4 && !this.phase.rebirthActive)) {
         ctx.fillStyle = "rgba(13, 11, 18, 0.005)"; // Mantenimiento tinta
         ctx.fillRect(0, 0, this.width, this.height);
@@ -2659,6 +2729,7 @@ class VisualInstrument {
         ctx.fillRect(0, 0, this.width, this.height);
       }
     }
+    // Con paintMemoryMode = true [M], NO se limpia con tinta: cada trazo queda guardado en el lienzo permanentemente.
     ctx.restore();
 
     // 6. Encolado de Trazos con Render Batching
