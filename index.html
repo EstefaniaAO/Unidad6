@@ -1366,7 +1366,91 @@ class RainDropAgent {
   }
 }
 
-// 6.4 TenderVolute: "Cosita Tierna" melódica creada con el Clic del Ratón
+// 6.4 SmokeAshAgent: Humo con Radio Inverso (de fino a grueso) y Ceniza
+class SmokeAshAgent {
+  constructor(sys, isAsh = false) {
+    this.sys = sys;
+    this.isAsh = isAsh;
+    this.reset();
+  }
+  reset() {
+    const sys = this.sys;
+    const pId = sys.phase.id;
+    this.dead = false;
+    this.life = 0;
+    this.maxLife = 90 + Math.random() * 110;
+
+    if (this.isAsh) {
+      this.x = Math.random() * sys.width;
+      this.y = -10;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.vy = 0.5 + Math.random() * 0.6;
+      this.r = (0.9 + Math.random() * 0.8) * sys.heightScale;
+      this.color = FastMath.hexToRgb("#D9CFBD");
+      this.alpha = 0.22;
+    } else {
+      // Humo nace en la fogata central
+      const cx = sys.width * 0.5;
+      const cy = sys.height * 0.5;
+      this.x = cx + (Math.random() - 0.5) * 16;
+      this.y = cy + (Math.random() - 0.5) * 12;
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = -0.8 - Math.random() * 1.0;
+      this.r = 1.4 * sys.heightScale; // Nace fino y SE ENSANCHA
+      this.color = FastMath.hexToRgb("#B9A6C2"); // Lavanda grisácea suave pastel
+      this.alpha = 0.16;
+    }
+    this.px = this.x;
+    this.py = this.y;
+  }
+  update(tempo, intensity = 1.0, windVec = null) {
+    if (this.dead) return;
+    this.px = this.x;
+    this.py = this.y;
+    this.life += tempo;
+    const progress = this.life / this.maxLife;
+
+    const sys = this.sys;
+    const flow = sys.flowField.getVector(this.x, this.y);
+
+    if (this.isAsh) {
+      this.vx = FastMath.lerp(this.vx, flow.x * 0.6, 0.04 * tempo);
+      this.vy = FastMath.lerp(this.vy, flow.y * 0.5 + 0.45, 0.04 * tempo);
+    } else {
+      // Radio crece mientras la opacidad cae
+      this.r = (1.4 + progress * 5.5) * sys.heightScale;
+      this.alpha = 0.16 * (1.0 - progress);
+
+      const buoyancy = -0.65;
+      this.vx = FastMath.lerp(this.vx, flow.x * 0.9, 0.05 * tempo);
+      this.vy = FastMath.lerp(this.vy, flow.y * 0.6 + buoyancy, 0.05 * tempo);
+    }
+
+    if (windVec && windVec.active) {
+      const dx = this.x - windVec.x;
+      const dy = this.y - windVec.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 320) {
+        const f = (1.0 - dist / 320) * windVec.strength;
+        this.vx += windVec.dirX * f * 2.5;
+        this.vy += windVec.dirY * f * 2.5;
+      }
+    }
+
+    this.x += this.vx * tempo;
+    this.y += this.vy * tempo;
+
+    if (this.life >= this.maxLife || this.y < -50 || this.y > sys.height + 50) {
+      if (this.isAsh && !sys.ashesActive) {
+        this.dead = true;
+      } else {
+        this.reset();
+      }
+    }
+  }
+}
+
+// 6.5 TenderVolute: "Cosita Tierna" melódica creada con el Clic del Ratón
 class TenderVolute {
   constructor(sys, ox, oy, phaseId) {
     this.sys = sys;
