@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bonfire — Visual Instrument (Wave to Earth)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #12100e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #e6dfd5;
+    }
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #canvas-paint {
+      z-index: 1;
+    }
+    #canvas-overlay {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* HUD Overlay */
+    #hud {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 10;
+      background: rgba(18, 16, 14, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(230, 223, 213, 0.15);
+      border-radius: 8px;
+      padding: 20px 24px;
+      max-width: 480px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+    }
+    #hud.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    #hud h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f3efe6;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #hud h1 span.song {
+      font-size: 0.8rem;
+      color: #d4a373;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+    #hud .phase-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(212, 163, 115, 0.2);
+      color: #faedcd;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin: 8px 0 12px 0;
+      border: 1px solid rgba(212, 163, 115, 0.3);
+    }
+    #hud .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 16px;
+      font-size: 0.82rem;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(230, 223, 213, 0.1);
+    }
+    #hud .metric-item {
+      display: flex;
+      justify-content: space-between;
+      color: #b8b0a2;
+    }
+    #hud .metric-item strong {
+      color: #fff;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+    #hud h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #d4a373;
+      margin: 10px 0 6px 0;
+    }
+    #hud .keys-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    #hud .keys-table td {
+      padding: 3px 0;
+      color: #c9c2b5;
+    }
+    #hud .keys-table td.key-col {
+      width: 90px;
+      font-family: monospace;
+      color: #faedcd;
+      font-weight: 600;
+    }
+    #hud .keys-table tr.highlight td {
+      color: #ffd166;
+    }
+    #hud .hint-footer {
+      margin-top: 12px;
+      font-size: 0.72rem;
+      color: #8c857b;
+      text-align: right;
+    }
+
+    /* Minimal indicator when HUD is closed */
+    #quick-pill {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9;
+      background: rgba(18, 16, 14, 0.65);
+      border: 1px solid rgba(230, 223, 213, 0.12);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.76rem;
+      color: #d9d2c5;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+<!--
+════════════════════════════════════════════════════════════════════════════════
+INSTRUMENTO VISUAL: "BONFIRE" (Wave to Earth)
+Creative Coding: Sistemas de Agentes Autónomos y Pintura Generativa
+════════════════════════════════════════════════════════════════════════════════
+
+1. TABLA DE AGENTES AUTÓNOMOS (Craig Reynolds / Physarum / Fluidos)
+────────────────────────────────────────────────────────────────────────────────
+Agente         │ Qué Percibe (Entradas)         │ Radio / Límite    │ Cálculo de Acción / Reglas de Steering
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+BrushAgent     │ - Vector de campo de flujo     │ 1 celda campo;    │ F_steer = limit(w_f * V_flow * maxSpeed + w_p * ∇T - V, F_max)
+(Pincel)       │ - Gradiente feromona Physarum  │ 2 celdas trail;   │ En Fase 2: Lee y escribe en ColorGrid (mezcla pigmento).
+               │ - Color en ColorGrid (Fase 2)  │ 1 celda ColorGrid │ En Fase 4: Se extingue de punta a raíz; fuera de radio
+               │ - Distancia al foco activo     │                   │ activo deposita carboncillo hacia el centro.
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+FireflyAgent   │ - Vecinos del enjambre         │ R_flock = 45px;   │ Flocking Reynolds: F_sep + F_ali + F_coh
+(Luciérnagas   │ - Posición de la fogata        │ R_sep = 20px;     │ + F_seek(fogata) + F_wander + F_evade(gotas en F2).
+/ Estrellas)   │ - Gotas de lluvia (Fase 2)     │ R_evade = 30px    │ Pulso del Intérprete (tecla Z): impulso radial de dispersión,
+               │ - Pulso del Intérprete (Z)     │                   │ seguido de coalescencia orgánica. En F4 quedan como estrellas
+               │                                │                   │ tenues; con Tecla B son semillas del renacimiento azul.
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+PhysarumAgent  │ - Feromona en 3 sensores:      │ Distancia ds=12px;│ Lee SL, SC, SR en Float32Array TrailMap.
+(Moho / Venas) │   Frontal, Izquierda, Derecha  │ Ángulo θs=32°     │ Si SC > max(SL, SR) -> avanza directo;
+               │                                │                   │ si SL > SR -> gira +Δθ; si no -> gira -Δθ.
+               │                                │                   │ Deposita feromona. El mapa difunde (3x3) y evapora con tempo.
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+RainDropAgent  │ - Vector de campo de flujo     │ 1 celda campo;    │ F = g_rain + 0.35 * V_flow - μ * densidadPigmento * V.
+(Gotas Lluvia) │ - Densidad de pigmento local   │ 1 celda ColorGrid │ Al descender sobre zonas con pintura en ColorGrid,
+               │   en la ColorGrid              │                   │ arrastra pigmento hacia abajo y diluye el lienzo.
+───────────────┼────────────────────────────────┼───────────────────┼────────────────────────────────────────────────────────────
+SmokeAshAgent  │ - Fuerza térmica de flotabilidad│ 1 celda campo;   │ F = V_flow + F_buoyancy(0, -g_term) + F_wander + F_viento.
+(Humo / Ceniza)│ - Campo de flujo local         │ Cursor ratón      │ Expande radio y desvanece opacidad con la edad.
+               │ - Ráfagas de viento (ratón)    │                   │ Persiste de F1 a F4 adaptando densidad y brillo.
+────────────────────────────────────────────────────────────────────────────────
+
+2. ALGORITMO DOMINANTE POR FASE Y CONTRIBUCIÓN EMERGENTE
+────────────────────────────────────────────────────────────────────────────────
+Fase 1 — El Bosque (Tempo = 0.6)
+  • Algoritmo dominante: Campo de flujo estructurado (troncos verticales estables + ramas diagonales continuas) combinado con Flocking armónico de luciérnagas.
+  • Aporte emergente: Sensación de contemplación, ramas arbóreas que sostienen follaje, hojas que se desprenden con oscilación natural, vida autónoma sin congelarse.
+Fase 2 — Caída y Agua (Tempo = 0.9)
+  • Algoritmo dominante: Physarum en dominancia máxima (w_phys = 0.75) con alta difusión + ColorGrid de mezcla en Float32Array + Steering de gotas de lluvia.
+  • Aporte emergente: La pintura del bosque se escurre en canales húmedos y hebras verticales (Ref 3 y 4). Las gotas arrastran pigmentos generando sangrados acuosos asintóticos que conservan contraste sin convertirse en fango uniforme. Rosados y dorados como acentos; sin azul.
+Fase 3 — La Fogata (Tempo = 1.3)
+  • Algoritmo dominante: Vórtices térmicos ciclónicos acelerados + Steering centrífugo desprendiendo filamentos (Ref 5 y 6).
+  • Aporte emergente: Remolinos de fuego de alta energía donde los trazos llenan la pantalla hasta una asíntota de máxima vivacidad; luciérnagas orbitando como chispas aceleradas; humo denso.
+Fase 4 — Apagado y Renacimiento (Tempo = 0.6)
+  • Algoritmo dominante:
+    - Pre-B: Extinción centrípeta gobernada por agentes y contracción de radio activo (de puntas a raíces, de periferia a núcleo) depositando carbón en la ColorGrid. Sin filtros globales.
+    - Post-B (Renacimiento): Las luciérnagas/estrellas actúan como semillas; brotes de acuarela azul (Ref 7) con filigranas y espirales áureas en la posición del ratón gobernadas por Physarum y orbit steering.
+
+3. TABLA DE TECLAS Y CONTROLES
+────────────────────────────────────────────────────────────────────────────────
+Transiciones (interpoladas suavemente, nunca automáticas):
+  [1] [2] [3] [4] : Ir directamente a la fase especificada.
+  [←] / [→]       : Fase anterior / siguiente.
+
+Acciones Expresivas Contextuales:
+  [ESPACIO]       : Acción principal según fase:
+                    - F1: Brote otoñal de hojas naranjas en ramas (radial burst + arrive + follow).
+                    - F2: Mancha de agua en el ratón (dilución radial y escurrimiento).
+                    - F3: Empuje de llamas ascendente (vórtice térmico en el ratón).
+                    - F4: Espirales/filigranas de acuarela blanca y azul en el ratón (Ref 7).
+  [Z]             : Pulso del intérprete:
+                    - F1: Latido rítmico (expansión de fuego, dispersión de luciérnagas, tensión de troncos).
+                    - F2: Ráfaga de gotas de lluvia.
+                    - F3: Golpe de brasas ardientes desde el núcleo.
+                    - F4: Gotas de rocío azul que sangran sobre el papel.
+  [X]             : Ráfaga de viento direccional hacia el ratón (F1).
+  [C]             : Cortina de ceniza descendente (F1).
+  [B]             : Renacimiento azul desde las estrellas (F4).
+
+Moduladores Globales:
+  [↑] / [↓]       : Intensidad global (velocidad, fuerza de campo, densidad).
+  [A] / [D] / Wheel: Turbulencia del campo (laminar ordenado ↔ caótico).
+  [S]             : Radio de percepción de los agentes (cohesión amplia ↔ caos local).
+  [R]             : Regenerar semilla aleatoria del campo vectorial sin reiniciar simulación.
+  [F]             : Pantalla completa (Fullscreen).
+  [H]             : Mostrar / Ocultar este HUD.
+
+4. OPTIMIZACIONES Y SIMPLIFICACIONES PARA 60 FPS
+────────────────────────────────────────────────────────────────────────────────
+- SpatialGrid 2D: Partición espacial con celdas de 45px para reducir el cálculo de flocking de luciérnagas de O(N²) a O(N).
+- ColorGrid en Float32Array (resolución 1/4): Elimina por completo getImageData(), permitiendo que miles de agentes lean, escriban y arrastren pigmentos en memoria JS nativa instantáneamente.
+- TrailMap de Physarum en Float32Array (resolución 1/3): Difusión rápida por convolución de caja 3x3 y evaporación escalada por tempo.
+- Doble Canvas: canvasPaint acumula veladuras pictóricas con alpha bajo; canvasOverlay dibuja a 60 FPS luciérnagas, núcleos luminosos, lluvia y HUD sin repintar el historial pictórico.
+════════════════════════════════════════════════════════════════════════════════
+-->
+
+<div id="canvas-container">
+  <canvas id="canvas-paint"></canvas>
+  <canvas id="canvas-overlay"></canvas>
+</div>
+
+<!-- Minimal status pill -->
+<div id="quick-pill">Fase 1: El Bosque | Presiona [H] para ayuda</div>
+
+<!-- HUD Overlay -->
+<div id="hud">
+  <h1>
+    <span>BONFIRE</span>
+    <span class="song">Wave to Earth</span>
+  </h1>
+  <div class="phase-badge" id="hud-phase-name">FASE 1 — El Bosque</div>
+  
+  <div class="metrics-grid">
+    <div class="metric-item"><span>Tempo:</span> <strong id="hud-tempo">0.60</strong></div>
+    <div class="metric-item"><span>FPS:</span> <strong id="hud-fps">60</strong></div>
+    <div class="metric-item"><span>Agentes Trazo:</span> <strong id="hud-agents">3800</strong></div>
+    <div class="metric-item"><span>Luciérnagas:</span> <strong id="hud-fireflies">140</strong></div>
+    <div class="metric-item"><span>Intensidad [↑/↓]:</span> <strong id="hud-intensity">1.00</strong></div>
+    <div class="metric-item"><span>Turbulencia [A/D]:</span> <strong id="hud-turb">0.45</strong></div>
+    <div class="metric-item"><span>Percepción [S]:</span> <strong id="hud-percep">45px</strong></div>
+    <div class="metric-item"><span>Estado F4:</span> <strong id="hud-rebirth">Espera</strong></div>
+  </div>
+
+  <h2>Teclas Expresivas (Contexto Actual)</h2>
+  <table class="keys-table">
+    <tr class="highlight"><td class="key-col">[ESPACIO]</td><td id="hud-key-space">Brote otoñal de hojas naranjas en ramas</td></tr>
+    <tr class="highlight"><td class="key-col">[Z]</td><td id="hud-key-z">Pulso del intérprete (expansión + dispersión)</td></tr>
+    <tr><td class="key-col">[X] / [C]</td><td id="hud-key-xc">X: Viento hacia ratón | C: Cortina de ceniza</td></tr>
+    <tr><td class="key-col">[B]</td><td id="hud-key-b">Renacimiento azul (exclusivo Fase 4)</td></tr>
+  </table>
+
+  <h2>Navegación y Sistema</h2>
+  <table class="keys-table">
+    <tr><td class="key-col">[1]..[4]</td><td>Cambio suave de fase (1:Bosque, 2:Agua, 3:Fuego, 4:Apagado)</td></tr>
+    <tr><td class="key-col">[←] / [→]</td><td>Fase anterior / siguiente</td></tr>
+    <tr><td class="key-col">[R]</td><td>Regenerar semilla del campo</td></tr>
+    <tr><td class="key-col">[F] / [H]</td><td>F: Pantalla completa | H: Ocultar/Mostrar HUD</td></tr>
+  </table>
+
+  <div class="hint-footer">El cursor se oculta automáticamente tras 2.5s sin movimiento.</div>
+</div>
+
+<script>
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 1: FastMath & SimplexNoise
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+const FastMath = (() => {
+  const F3 = 1.0 / 3.0, G3 = 1.0 / 6.0;
+  const F2 = 0.5 * (Math.sqrt(3.0) - 1.0), G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+  
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  let seed = 42;
+  const perm = new Uint8Array(512);
+  const permMod12 = new Uint8Array(512);
+  const grad3 = new Float32Array([
+    1,1,0, -1,1,0, 1,-1,0, -1,-1,0,
+    1,0,1, -1,0,1, 1,0,-1, -1,0,-1,
+    0,1,1, 0,-1,1, 0,1,-1, 0,-1,-1
+  ]);
+
+  function reseed(s) {
+    seed = s;
+    let sVal = s;
+    for (let i = 255; i > 0; i--) {
+      sVal = (sVal * 16807) % 2147483647;
+      const j = sVal % (i + 1);
+      const tmp = p[i]; p[i] = p[j]; p[j] = tmp;
+    }
+    for (let i = 0; i < 512; i++) {
+      perm[i] = p[i & 255];
+      permMod12[i] = perm[i] % 12;
+    }
+  }
+  reseed(42);
+
+  function noise2D(xin, yin) {
+    let n0=0, n1=0, n2=0;
+    const s = (xin + yin) * F2;
+    const i = Math.floor(xin + s);
+    const j = Math.floor(yin + s);
+    const t = (i + j) * G2;
+    const X0 = i - t;
+    const Y0 = j - t;
+    const x0 = xin - X0;
+    const y0 = yin - Y0;
+
+    let i1, j1;
+    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+
+    const x1 = x0 - i1 + G2;
+    const y1 = y0 - j1 + G2;
+    const x2 = x0 - 1.0 + 2.0 * G2;
+    const y2 = y0 - 1.0 + 2.0 * G2;
+
+    const ii = i & 255;
+    const jj = j & 255;
+
+    let t0 = 0.5 - x0*x0 - y0*y0;
+    if (t0 > 0) {
+      t0 *= t0;
+      const gi0 = permMod12[ii + perm[jj]] * 3;
+      n0 = t0 * t0 * (grad3[gi0] * x0 + grad3[gi0 + 1] * y0);
+    }
+    let t1 = 0.5 - x1*x1 - y1*y1;
+    if (t1 > 0) {
+      t1 *= t1;
+      const gi1 = permMod12[ii + i1 + perm[jj + j1]] * 3;
+      n1 = t1 * t1 * (grad3[gi1] * x1 + grad3[gi1 + 1] * y1);
+    }
+    let t2 = 0.5 - x2*x2 - y2*y2;
+    if (t2 > 0) {
+      t2 *= t2;
+      const gi2 = permMod12[ii + 1 + perm[jj + 1]] * 3;
+      n2 = t2 * t2 * (grad3[gi2] * x2 + grad3[gi2 + 1] * y2);
+    }
+    return 70.0 * (n0 + n1 + n2);
+  }
+
+  function noise3D(xin, yin, zin) {
+    let n0, n1, n2, n3;
+    const s = (xin + yin + zin) * F3;
+    const i = Math.floor(xin + s);
+    const j = Math.floor(yin + s);
+    const k = Math.floor(zin + s);
+    const t = (i + j + k) * G3;
+    const X0 = i - t;
+    const Y0 = j - t;
+    const Z0 = k - t;
+    const x0 = xin - X0;
+    const y0 = yin - Y0;
+    const z0 = zin - Z0;
+
+    let i1, j1, k1, i2, j2, k2;
+    if (x0 >= y0) {
+      if (y0 >= z0) { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; }
+      else if (x0 >= z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; }
+      else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; }
+    } else {
+      if (y0 < z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; }
+      else if (x0 < z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; }
+      else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; }
+    }
+
+    const x1 = x0 - i1 + G3;
+    const y1 = y0 - j1 + G3;
+    const z1 = z0 - k1 + G3;
+    const x2 = x0 - i2 + 2.0*G3;
+    const y2 = y0 - j2 + 2.0*G3;
+    const z2 = z0 - k2 + 2.0*G3;
+    const x3 = x0 - 1.0 + 3.0*G3;
+    const y3 = y0 - 1.0 + 3.0*G3;
+    const z3 = z0 - 1.0 + 3.0*G3;
+
+    const ii = i & 255;
+    const jj = j & 255;
+    const kk = k & 255;
+
+    let t0 = 0.6 - x0*x0 - y0*y0 - z0*z0;
+    if (t0 < 0) n0 = 0.0;
+    else {
+      t0 *= t0;
+      const gi0 = permMod12[ii + perm[jj + perm[kk]]] * 3;
+      n0 = t0 * t0 * (grad3[gi0]*x0 + grad3[gi0+1]*y0 + grad3[gi0+2]*z0);
+    }
+
+    let t1 = 0.6 - x1*x1 - y1*y1 - z1*z1;
+    if (t1 < 0) n1 = 0.0;
+    else {
+      t1 *= t1;
+      const gi1 = permMod12[ii + i1 + perm[jj + j1 + perm[kk + k1]]] * 3;
+      n1 = t1 * t1 * (grad3[gi1]*x1 + grad3[gi1+1]*y1 + grad3[gi1+2]*z1);
+    }
+
+    let t2 = 0.6 - x2*x2 - y2*y2 - z2*z2;
+    if (t2 < 0) n2 = 0.0;
+    else {
+      t2 *= t2;
+      const gi2 = permMod12[ii + i2 + perm[jj + j2 + perm[kk + k2]]] * 3;
+      n2 = t2 * t2 * (grad3[gi2]*x2 + grad3[gi2+1]*y2 + grad3[gi2+2]*z2);
+    }
+
+    let t3 = 0.6 - x3*x3 - y3*y3 - z3*z3;
+    if (t3 < 0) n3 = 0.0;
+    else {
+      t3 *= t3;
+      const gi3 = permMod12[ii + 1 + perm[jj + 1 + perm[kk + 1]]] * 3;
+      n3 = t3 * t3 * (grad3[gi3]*x3 + grad3[gi3+1]*y3 + grad3[gi3+2]*z3);
+    }
+    return 32.0 * (n0 + n1 + n2 + n3);
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+  return { noise2D, noise3D, reseed, lerp, clamp };
+})();
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 2: SpatialGrid (Partición espacial O(N) para flocking)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class SpatialGrid {
+  constructor(width, height, cellSize = 45) {
+    this.cellSize = cellSize;
+    this.resize(width, height);
+  }
+  resize(width, height) {
+    this.cols = Math.ceil(width / this.cellSize);
+    this.rows = Math.ceil(height / this.cellSize);
+    this.grid = new Array(this.cols * this.rows);
+    for (let i = 0; i < this.grid.length; i++) {
+      this.grid[i] = [];
+    }
+  }
+  clear() {
+    for (let i = 0; i < this.grid.length; i++) {
+      this.grid[i].length = 0;
+    }
+  }
+  insert(agent) {
+    const col = Math.floor(agent.x / this.cellSize);
+    const row = Math.floor(agent.y / this.cellSize);
+    if (col >= 0 && col < this.cols && row >= 0 && row < this.rows) {
+      this.grid[row * this.cols + col].push(agent);
+    }
+  }
+  query(x, y, radius, callback) {
+    const minCol = Math.max(0, Math.floor((x - radius) / this.cellSize));
+    const maxCol = Math.min(this.cols - 1, Math.floor((x + radius) / this.cellSize));
+    const minRow = Math.max(0, Math.floor((y - radius) / this.cellSize));
+    const maxRow = Math.min(this.rows - 1, Math.floor((y + radius) / this.cellSize));
+    const rSq = radius * radius;
+
+    for (let r = minRow; r <= maxRow; r++) {
+      const rowOffset = r * this.cols;
+      for (let c = minCol; c <= maxCol; c++) {
+        const cell = this.grid[rowOffset + c];
+        for (let i = 0; i < cell.length; i++) {
+          const other = cell[i];
+          const dx = other.x - x;
+          const dy = other.y - y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= rSq && d2 > 0.0001) {
+            callback(other, d2);
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 3: ColorGrid (Buffer Float32Array a escala 1/4 - CERO getImageData)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class ColorGrid {
+  constructor(width, height) {
+    this.scale = 0.25; // 1/4 resolución del canvas
+    this.resize(width, height);
+  }
+  resize(width, height) {
+    this.w = Math.max(1, Math.floor(width * this.scale));
+    this.h = Math.max(1, Math.floor(height * this.scale));
+    this.data = new Float32Array(this.w * this.h * 3);
+    this.clearToPaper(0.92, 0.89, 0.84); // Tono de papel beige/lino inicial
+  }
+  clearToPaper(r, g, b) {
+    for (let i = 0; i < this.w * this.h; i++) {
+      const idx = i * 3;
+      this.data[idx] = r;
+      this.data[idx + 1] = g;
+      this.data[idx + 2] = b;
+    }
+  }
+  sample(x, y) {
+    const gx = x * this.scale;
+    const gy = y * this.scale;
+    const ix = Math.floor(gx);
+    const iy = Math.floor(gy);
+    if (ix < 0 || ix >= this.w - 1 || iy < 0 || iy >= this.h - 1) {
+      return { r: 0.9, g: 0.88, b: 0.82 };
+    }
+    const fx = gx - ix;
+    const fy = gy - iy;
+    const idx00 = (iy * this.w + ix) * 3;
+    const idx10 = idx00 + 3;
+    const idx01 = ((iy + 1) * this.w + ix) * 3;
+    const idx11 = idx01 + 3;
+
+    const w00 = (1 - fx) * (1 - fy);
+    const w10 = fx * (1 - fy);
+    const w01 = (1 - fx) * fy;
+    const w11 = fx * fy;
+
+    return {
+      r: this.data[idx00]*w00 + this.data[idx10]*w10 + this.data[idx01]*w01 + this.data[idx11]*w11,
+      g: this.data[idx00+1]*w00 + this.data[idx10+1]*w10 + this.data[idx01+1]*w01 + this.data[idx11+1]*w11,
+      b: this.data[idx00+2]*w00 + this.data[idx10+2]*w10 + this.data[idx01+2]*w01 + this.data[idx11+2]*w11
+    };
+  }
+  getDensity(x, y) {
+    const c = this.sample(x, y);
+    const luma = c.r * 0.299 + c.g * 0.587 + c.b * 0.114;
+    return Math.max(0, 1.0 - luma);
+  }
+  deposit(x, y, r, g, b, alpha) {
+    const ix = Math.floor(x * this.scale);
+    const iy = Math.floor(y * this.scale);
+    if (ix < 0 || ix >= this.w || iy < 0 || iy >= this.h) return;
+    const idx = (iy * this.w + ix) * 3;
+    const a = Math.min(1.0, alpha);
+    this.data[idx]     = this.data[idx] * (1 - a) + r * a;
+    this.data[idx + 1] = this.data[idx + 1] * (1 - a) + g * a;
+    this.data[idx + 2] = this.data[idx + 2] * (1 - a) + b * a;
+  }
+  drag(fromX, fromY, toX, toY, amount) {
+    const fx = Math.floor(fromX * this.scale);
+    const fy = Math.floor(fromY * this.scale);
+    const tx = Math.floor(toX * this.scale);
+    const ty = Math.floor(toY * this.scale);
+    if (fx < 0 || fx >= this.w || fy < 0 || fy >= this.h ||
+        tx < 0 || tx >= this.w || ty < 0 || ty >= this.h) return;
+    
+    const fIdx = (fy * this.w + fx) * 3;
+    const tIdx = (ty * this.w + tx) * 3;
+    const amt = Math.min(0.8, amount);
+
+    const dr = this.data[fIdx] * amt;
+    const dg = this.data[fIdx + 1] * amt;
+    const db = this.data[fIdx + 2] * amt;
+
+    this.data[tIdx]     = this.data[tIdx] * (1 - amt) + dr;
+    this.data[tIdx + 1] = this.data[tIdx + 1] * (1 - amt) + dg;
+    this.data[tIdx + 2] = this.data[tIdx + 2] * (1 - amt) + db;
+    this.data[fIdx]     = Math.min(1.0, this.data[fIdx] + 0.04 * amt);
+    this.data[fIdx + 1] = Math.min(1.0, this.data[fIdx + 1] + 0.04 * amt);
+    this.data[fIdx + 2] = Math.min(1.0, this.data[fIdx + 2] + 0.04 * amt);
+  }
+  diluteCircle(cx, cy, radius, factor) {
+    const gcx = cx * this.scale;
+    const gcy = cy * this.scale;
+    const gr = radius * this.scale;
+    const minX = Math.max(0, Math.floor(gcx - gr));
+    const maxX = Math.min(this.w - 1, Math.ceil(gcx + gr));
+    const minY = Math.max(0, Math.floor(gcy - gr));
+    const maxY = Math.min(this.h - 1, Math.ceil(gcy + gr));
+    const rSq = gr * gr;
+
+    for (let y = minY; y <= maxY; y++) {
+      const dy = y - gcy;
+      const dy2 = dy * dy;
+      const rowOffset = y * this.w;
+      for (let x = minX; x <= maxX; x++) {
+        const dx = x - gcx;
+        const d2 = dx * dx + dy2;
+        if (d2 <= rSq) {
+          const falloff = (1.0 - Math.sqrt(d2) / gr) * factor;
+          const idx = (rowOffset + x) * 3;
+          this.data[idx]     = Math.min(1.0, this.data[idx] + (0.95 - this.data[idx]) * falloff);
+          this.data[idx + 1] = Math.min(1.0, this.data[idx + 1] + (0.93 - this.data[idx + 1]) * falloff);
+          this.data[idx + 2] = Math.min(1.0, this.data[idx + 2] + (0.88 - this.data[idx + 2]) * falloff);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 4: PhysarumSimulation (TrailMap Float32Array a resolución 1/3)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class PhysarumSimulation {
+  constructor(width, height) {
+    this.scale = 0.333; // 1/3 resolución
+    this.agents = [];
+    this.resize(width, height);
+  }
+  resize(width, height) {
+    this.w = Math.max(1, Math.floor(width * this.scale));
+    this.h = Math.max(1, Math.floor(height * this.scale));
+    this.trail = new Float32Array(this.w * this.h);
+    this.trailBack = new Float32Array(this.w * this.h);
+  }
+  initAgents(count, width, height) {
+    this.agents = [];
+    for (let i = 0; i < count; i++) {
+      this.agents.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        angle: Math.random() * Math.PI * 2,
+        speed: 1.5 + Math.random() * 1.2
+      });
+    }
+  }
+  deposit(x, y, amount) {
+    const ix = Math.floor(x * this.scale);
+    const iy = Math.floor(y * this.scale);
+    if (ix >= 0 && ix < this.w && iy >= 0 && iy < this.h) {
+      const idx = iy * this.w + ix;
+      this.trail[idx] = Math.min(5.0, this.trail[idx] + amount);
+    }
+  }
+  sample(x, y) {
+    const ix = Math.floor(x * this.scale);
+    const iy = Math.floor(y * this.scale);
+    if (ix < 0 || ix >= this.w || iy < 0 || iy >= this.h) return 0;
+    return this.trail[iy * this.w + ix];
+  }
+  sampleGradient(x, y) {
+    const delta = 2.0;
+    const tR = this.sample(x + delta, y);
+    const tL = this.sample(x - delta, y);
+    const tD = this.sample(x, y + delta);
+    const tU = this.sample(x, y - delta);
+    return {
+      gx: (tR - tL) * 0.5,
+      gy: (tD - tU) * 0.5
+    };
+  }
+  update(tempo, sensorDist = 12, sensorAngle = 0.55, rotAngle = 0.45) {
+    const w = this.w;
+    const h = this.h;
+    const invScale = 1.0 / this.scale;
+
+    for (let i = 0; i < this.agents.length; i++) {
+      const a = this.agents[i];
+      const ang = a.angle;
+
+      const sDist = sensorDist;
+      const sLeftAng = ang - sensorAngle;
+      const sRightAng = ang + sensorAngle;
+
+      const cX = a.x + Math.cos(ang) * sDist;
+      const cY = a.y + Math.sin(ang) * sDist;
+      const lX = a.x + Math.cos(sLeftAng) * sDist;
+      const lY = a.y + Math.sin(sLeftAng) * sDist;
+      const rX = a.x + Math.cos(sRightAng) * sDist;
+      const rY = a.y + Math.sin(sRightAng) * sDist;
+
+      const sC = this.sample(cX, cY);
+      const sL = this.sample(lX, lY);
+      const sR = this.sample(rX, rY);
+
+      if (sC > sL && sC > sR) {
+        // Directo
+      } else if (sC < sL && sC < sR) {
+        a.angle += (Math.random() > 0.5 ? 1 : -1) * rotAngle;
+      } else if (sL > sR) {
+        a.angle -= rotAngle;
+      } else if (sR > sL) {
+        a.angle += rotAngle;
+      }
+
+      const spd = a.speed * tempo;
+      a.x += Math.cos(a.angle) * spd;
+      a.y += Math.sin(a.angle) * spd;
+
+      const screenW = w * invScale;
+      const screenH = h * invScale;
+      if (a.x < 0) a.x += screenW;
+      else if (a.x >= screenW) a.x -= screenW;
+      if (a.y < 0) a.y += screenH;
+      else if (a.y >= screenH) a.y -= screenH;
+
+      this.deposit(a.x, a.y, 0.45 * tempo);
+    }
+
+    // Difusión 3x3 rápida y evaporación escalada por tempo
+    const evap = Math.max(0.88, 1.0 - 0.05 * tempo);
+    const src = this.trail;
+    const dst = this.trailBack;
+
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      const rowPrev = (y - 1) * w;
+      const rowNext = (y + 1) * w;
+      for (let x = 1; x < w - 1; x++) {
+        const sum = (
+          src[rowPrev + x - 1] + src[rowPrev + x] + src[rowPrev + x + 1] +
+          src[row + x - 1]     + src[row + x]     + src[row + x + 1] +
+          src[rowNext + x - 1] + src[rowNext + x] + src[rowNext + x + 1]
+        ) * 0.111111;
+        dst[row + x] = sum * evap;
+      }
+    }
+    this.trail = dst;
+    this.trailBack = src;
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 5: FlowField (Campo Vectorial Multicapa con Simplex Curl Noise)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class FlowField {
+  constructor(width, height, cellSize = 16) {
+    this.cellSize = cellSize;
+    this.time = 0;
+    this.noiseSeed = 100;
+    this.turbulence = 0.45;
+    this.resize(width, height);
+    this.trunks = [];
+    this.generateTrunks();
+  }
+  resize(width, height) {
+    this.width = width;
+    this.height = height;
+    this.cols = Math.ceil(width / this.cellSize) + 1;
+    this.rows = Math.ceil(height / this.cellSize) + 1;
+    this.field = new Float32Array(this.cols * this.rows * 2);
+  }
+  reseed() {
+    this.noiseSeed = Math.floor(Math.random() * 10000);
+    FastMath.reseed(this.noiseSeed);
+    this.generateTrunks();
+  }
+  generateTrunks() {
+    this.trunks = [];
+    const count = 4 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+      const x = (this.width * (i + 0.6)) / count + (Math.random() - 0.5) * (this.width / (count * 2));
+      const width = 40 + Math.random() * 45;
+      this.trunks.push({ x, width });
+    }
+  }
+  update(phase, tempo, timeElapsed, pulseVal, windVec) {
+    this.time += 0.008 * tempo;
+    const cols = this.cols;
+    const rows = this.rows;
+    const cs = this.cellSize;
+    const t = this.time;
+    const turb = this.turbulence;
+
+    const centerX = this.width * 0.5;
+    const centerY = this.height * 0.58;
+
+    for (let r = 0; r < rows; r++) {
+      const y = r * cs;
+      const rowOffset = r * cols * 2;
+      for (let c = 0; c < cols; c++) {
+        const x = c * cs;
+        const idx = rowOffset + c * 2;
+
+        let vx = 0;
+        let vy = 0;
+
+        const nScale = 0.0028 * (1.0 + turb * 0.5);
+        const eps = 1.0;
+        const nU = FastMath.noise3D(x * nScale, (y - eps) * nScale, t);
+        const nD = FastMath.noise3D(x * nScale, (y + eps) * nScale, t);
+        const nL = FastMath.noise3D((x - eps) * nScale, y * nScale, t);
+        const nR = FastMath.noise3D((x + eps) * nScale, y * nScale, t);
+
+        let curlX = (nD - nU) * 0.5;
+        let curlY = -(nR - nL) * 0.5;
+
+        if (phase.id === 1) {
+          let inTrunk = 0;
+          for (let ti = 0; ti < this.trunks.length; ti++) {
+            const tr = this.trunks[ti];
+            const dist = Math.abs(x - tr.x);
+            if (dist < tr.width) {
+              const weight = 1.0 - (dist / tr.width);
+              inTrunk = Math.max(inTrunk, weight);
+            }
+          }
+          const trunkVy = -0.85 + pulseVal * 0.4;
+          const trunkVx = (FastMath.noise2D(x * 0.01, y * 0.005 + t) * 0.2);
+          const branchBias = Math.sin(y * 0.015 + x * 0.008) * 0.5;
+
+          vx = FastMath.lerp(curlX * 1.5, trunkVx + branchBias, inTrunk * 0.7);
+          vy = FastMath.lerp(curlY * 1.5 + 0.1, trunkVy, inTrunk * 0.7);
+
+          const dfx = x - centerX;
+          const dfy = y - centerY;
+          const dFireSq = dfx*dfx + dfy*dfy;
+          if (dFireSq < 40000) {
+            const fDist = Math.sqrt(dFireSq);
+            const fWeight = (1.0 - fDist / 200);
+            vy -= fWeight * (0.8 + pulseVal * 1.5);
+            vx += (FastMath.noise2D(x * 0.02, t * 2) * 0.4) * fWeight;
+          }
+
+        } else if (phase.id === 2) {
+          const downStream = 1.25;
+          const streamCurl = curlX * 0.8;
+          vx = streamCurl + FastMath.noise2D(x * 0.005, y * 0.002 + t) * 0.4;
+          vy = downStream + curlY * 0.5;
+
+        } else if (phase.id === 3) {
+          const dx = x - centerX;
+          const dy = y - centerY;
+          const dist = Math.sqrt(dx * dx + dy * dy) + 1.0;
+          
+          const vortexStrength = Math.min(2.5, 300.0 / (dist + 40.0));
+          const vtxX = -(dy / dist) * vortexStrength;
+          const vtxY = (dx / dist) * vortexStrength;
+          const updraft = -Math.max(0, 1.8 - (dist / (this.width * 0.4)));
+
+          vx = curlX * 1.2 + vtxX * 1.4;
+          vy = curlY * 1.2 + vtxY * 0.4 + updraft * 1.8;
+
+        } else if (phase.id === 4) {
+          if (!phase.rebirthActive) {
+            const dx = centerX - x;
+            const dy = centerY - y;
+            const dist = Math.sqrt(dx * dx + dy * dy) + 1.0;
+            vx = curlX * 0.4 + (dx / dist) * 0.15;
+            vy = curlY * 0.4 + 0.2;
+          } else {
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy) + 1.0;
+            const spiralAng = Math.atan2(dy, dx) + Math.PI * 0.4;
+            const spiralSpd = 0.9 * Math.exp(-dist / (this.width * 0.4));
+            
+            vx = Math.cos(spiralAng) * spiralSpd + curlX * 0.9;
+            vy = Math.sin(spiralAng) * spiralSpd + curlY * 0.9 - 0.2;
+          }
+        }
+
+        if (windVec && windVec.active) {
+          const wdx = x - windVec.x;
+          const wdy = y - windVec.y;
+          const wDist = Math.sqrt(wdx*wdx + wdy*wdy);
+          if (wDist < 350) {
+            const wFactor = (1.0 - wDist / 350) * windVec.strength;
+            vx += windVec.dirX * wFactor * 3.0;
+            vy += windVec.dirY * wFactor * 3.0;
+          }
+        }
+
+        this.field[idx] = vx;
+        this.field[idx + 1] = vy;
+      }
+    }
+  }
+  getVector(x, y) {
+    const cs = this.cellSize;
+    const gx = x / cs;
+    const gy = y / cs;
+    const ix = Math.floor(gx);
+    const iy = Math.floor(gy);
+
+    if (ix < 0 || ix >= this.cols - 1 || iy < 0 || iy >= this.rows - 1) {
+      return { x: 0, y: 0.1 };
+    }
+    const fx = gx - ix;
+    const fy = gy - iy;
+    const idx00 = (iy * this.cols + ix) * 2;
+    const idx10 = idx00 + 2;
+    const idx01 = ((iy + 1) * this.cols + ix) * 2;
+    const idx11 = idx01 + 2;
+
+    const w00 = (1 - fx) * (1 - fy);
+    const w10 = fx * (1 - fy);
+    const w01 = (1 - fx) * fy;
+    const w11 = fx * fy;
+
+    return {
+      x: this.field[idx00]*w00 + this.field[idx10]*w10 + this.field[idx01]*w01 + this.field[idx11]*w11,
+      y: this.field[idx00+1]*w00 + this.field[idx10+1]*w10 + this.field[idx01+1]*w01 + this.field[idx11+1]*w11
+    };
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 6: Clases de Agentes Autónomos (Steering Behaviors)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
+// 6.1 BrushAgent: Agente de trazo de pintura pictórica
+class BrushAgent {
+  constructor(sys) {
+    this.sys = sys;
+    this.reset(true);
+  }
+  reset(randomInitial = false) {
+    const sys = this.sys;
+    const pId = sys.phase.id;
+    this.dead = false;
+    this.life = 0;
+    this.maxLife = 120 + Math.floor(Math.random() * 180);
+    this.width = 1.2 + Math.random() * 2.8;
+
+    if (randomInitial) {
+      this.x = Math.random() * sys.width;
+      this.y = Math.random() * sys.height;
+    } else if (pId === 1) {
+      if (sys.flowField.trunks.length > 0 && Math.random() > 0.3) {
+        const tr = sys.flowField.trunks[Math.floor(Math.random() * sys.flowField.trunks.length)];
+        this.x = tr.x + (Math.random() - 0.5) * tr.width * 1.2;
+        this.y = sys.height * (0.2 + Math.random() * 0.75);
+      } else {
+        this.x = Math.random() * sys.width;
+        this.y = Math.random() * sys.height;
+      }
+    } else if (pId === 2) {
+      this.x = Math.random() * sys.width;
+      this.y = Math.random() * (sys.height * 0.2);
+    } else if (pId === 3) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.random() * (sys.width * 0.18);
+      this.x = sys.width * 0.5 + Math.cos(angle) * r;
+      this.y = sys.height * 0.62 + Math.sin(angle) * r * 0.6;
+    } else {
+      if (sys.phase.rebirthActive) {
+        const s = sys.getRandomSeedStar();
+        this.x = s ? s.x + (Math.random() - 0.5) * 30 : Math.random() * sys.width;
+        this.y = s ? s.y + (Math.random() - 0.5) * 30 : Math.random() * sys.height;
+      } else {
+        const edge = Math.floor(Math.random() * 4);
+        if (edge === 0) { this.x = Math.random() * sys.width; this.y = 0; }
+        else if (edge === 1) { this.x = sys.width; this.y = Math.random() * sys.height; }
+        else if (edge === 2) { this.x = Math.random() * sys.width; this.y = sys.height; }
+        else { this.x = 0; this.y = Math.random() * sys.height; }
+      }
+    }
+
+    this.px = this.x;
+    this.py = this.y;
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = (Math.random() - 0.5) * 0.5;
+    this.maxSpeed = 1.8 + Math.random() * 1.6;
+    this.maxForce = 0.12 + Math.random() * 0.1;
+    this.color = sys.pickColorForAgent(this.x, this.y);
+  }
+  update(tempo, wPhys, intensity) {
+    if (this.dead) return;
+    this.px = this.x;
+    this.py = this.y;
+    this.life += tempo;
+
+    const sys = this.sys;
+    const pId = sys.phase.id;
+
+    const flow = sys.flowField.getVector(this.x, this.y);
+    const grad = sys.physarum.sampleGradient(this.x, this.y);
+
+    const targetVx = flow.x * this.maxSpeed * intensity + grad.gx * wPhys * 3.0;
+    const targetVy = flow.y * this.maxSpeed * intensity + grad.gy * wPhys * 3.0;
+
+    let steerX = targetVx - this.vx;
+    let steerY = targetVy - this.vy;
+    const sLen = Math.sqrt(steerX * steerX + steerY * steerY);
+    if (sLen > this.maxForce) {
+      steerX = (steerX / sLen) * this.maxForce;
+      steerY = (steerY / sLen) * this.maxForce;
+    }
+
+    this.vx += steerX * tempo;
+    this.vy += steerY * tempo;
+
+    const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const topSpd = this.maxSpeed * intensity;
+    if (spd > topSpd) {
+      this.vx = (this.vx / spd) * topSpd;
+      this.vy = (this.vy / spd) * topSpd;
+    }
+
+    this.x += this.vx * tempo;
+    this.y += this.vy * tempo;
+
+    if (pId === 2) {
+      const localC = sys.colorGrid.sample(this.x, this.y);
+      this.color.r = FastMath.lerp(this.color.r, localC.r, 0.08 * tempo);
+      this.color.g = FastMath.lerp(this.color.g, localC.g, 0.08 * tempo);
+      this.color.b = FastMath.lerp(this.color.b, localC.b, 0.08 * tempo);
+      sys.colorGrid.deposit(this.x, this.y, this.color.r, this.color.g, this.color.b, 0.15 * tempo);
+
+    } else if (pId === 4 && !sys.phase.rebirthActive) {
+      const cx = sys.width * 0.5;
+      const cy = sys.height * 0.58;
+      const dCenter = Math.sqrt((this.x - cx)*(this.x - cx) + (this.y - cy)*(this.y - cy));
+      const activeRadius = sys.phase.extinctionRadius;
+
+      if (dCenter > activeRadius) {
+        this.color.r = FastMath.lerp(this.color.r, 0.04, 0.15 * tempo);
+        this.color.g = FastMath.lerp(this.color.g, 0.03, 0.15 * tempo);
+        this.color.b = FastMath.lerp(this.color.b, 0.03, 0.15 * tempo);
+        sys.colorGrid.deposit(this.x, this.y, 0.05, 0.04, 0.04, 0.18 * tempo);
+      }
+    }
+
+    if (this.life >= this.maxLife ||
+        this.x < -40 || this.x > sys.width + 40 ||
+        this.y < -40 || this.y > sys.height + 40) {
+      this.reset();
+    }
+  }
+}
+
+// 6.2 FireflyAgent: Luciérnagas / Estrellas (Flocking + Seek + Wander + Evasión)
+class FireflyAgent {
+  constructor(sys) {
+    this.sys = sys;
+    this.x = Math.random() * sys.width;
+    this.y = Math.random() * sys.height;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
+    this.maxSpeed = 2.2 + Math.random() * 1.2;
+    this.maxForce = 0.14;
+    this.phaseOffset = Math.random() * Math.PI * 2;
+    this.wanderAngle = Math.random() * Math.PI * 2;
+  }
+  update(tempo, intensity, perceptionRadius, pulseIntensity) {
+    const sys = this.sys;
+    const pId = sys.phase.id;
+
+    let sepX = 0, sepY = 0, countSep = 0;
+    let aliX = 0, aliY = 0, countAli = 0;
+    let cohX = 0, cohY = 0, countCoh = 0;
+    const sepDist = 20;
+
+    sys.spatialGrid.query(this.x, this.y, perceptionRadius, (other, d2) => {
+      const d = Math.sqrt(d2);
+      if (d < sepDist) {
+        sepX += (this.x - other.x) / (d + 0.01);
+        sepY += (this.y - other.y) / (d + 0.01);
+        countSep++;
+      }
+      aliX += other.vx;
+      aliY += other.vy;
+      countAli++;
+      cohX += other.x;
+      cohY += other.y;
+      countCoh++;
+    });
+
+    let steerSepX = 0, steerSepY = 0;
+    if (countSep > 0) {
+      sepX /= countSep;
+      sepY /= countSep;
+      steerSepX = sepX * 1.5;
+      steerSepY = sepY * 1.5;
+    }
+
+    let steerAliX = 0, steerAliY = 0;
+    if (countAli > 0) {
+      aliX /= countAli;
+      aliY /= countAli;
+      steerAliX = aliX * 0.8;
+      steerAliY = aliY * 0.8;
+    }
+
+    let steerCohX = 0, steerCohY = 0;
+    if (countCoh > 0) {
+      cohX /= countCoh;
+      cohY /= countCoh;
+      steerCohX = (cohX - this.x) * 0.03;
+      steerCohY = (cohY - this.y) * 0.03;
+    }
+
+    this.wanderAngle += (Math.random() - 0.5) * 0.6;
+    const wanderX = Math.cos(this.wanderAngle) * 0.5;
+    const wanderY = Math.sin(this.wanderAngle) * 0.5;
+
+    const targetX = sys.width * 0.5;
+    const targetY = sys.height * (pId === 3 ? 0.62 : 0.58);
+    const toFireX = targetX - this.x;
+    const toFireY = targetY - this.y;
+
+    let seekX = 0, seekY = 0;
+    if (pId === 1 || pId === 3) {
+      const seekWeight = pId === 3 ? 0.025 : 0.012;
+      seekX = toFireX * seekWeight;
+      seekY = toFireY * seekWeight;
+    }
+
+    let evadeRainX = 0, evadeRainY = 0;
+    if (pId === 2) {
+      for (let i = 0; i < Math.min(20, sys.rainDrops.length); i++) {
+        const drop = sys.rainDrops[i];
+        const rdx = this.x - drop.x;
+        const rdy = this.y - drop.y;
+        const rd2 = rdx*rdx + rdy*rdy;
+        if (rd2 < 900) {
+          const rd = Math.sqrt(rd2) + 0.1;
+          evadeRainX += (rdx / rd) * 1.8;
+          evadeRainY += (rdy / rd) * 1.8;
+        }
+      }
+    }
+
+    let pulseX = 0, pulseY = 0;
+    if (pulseIntensity > 0.05) {
+      const pDx = this.x - targetX;
+      const pDy = this.y - targetY;
+      const pDist = Math.sqrt(pDx*pDx + pDy*pDy) + 1.0;
+      pulseX = (pDx / pDist) * pulseIntensity * 4.5;
+      pulseY = (pDy / pDist) * pulseIntensity * 4.5;
+    }
+
+    let ax = (steerSepX * 1.2 + steerAliX + steerCohX + wanderX + seekX + evadeRainX + pulseX);
+    let ay = (steerSepY * 1.2 + steerAliY + steerCohY + wanderY + seekY + evadeRainY + pulseY);
+
+    if (pId === 4 && !sys.phase.rebirthActive) {
+      ax *= 0.25;
+      ay *= 0.25;
+      this.vx *= 0.95;
+      this.vy *= 0.95;
+    }
+
+    this.vx += ax * tempo;
+    this.vy += ay * tempo;
+
+    const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const maxS = this.maxSpeed * intensity * (pId === 3 ? 1.6 : (pId === 4 ? 0.4 : 1.0));
+    if (spd > maxS) {
+      this.vx = (this.vx / spd) * maxS;
+      this.vy = (this.vy / spd) * maxS;
+    }
+
+    this.x += this.vx * tempo;
+    this.y += this.vy * tempo;
+
+    if (this.x < 20) this.vx += 0.3;
+    if (this.x > sys.width - 20) this.vx -= 0.3;
+    if (this.y < 20) this.vy += 0.3;
+    if (this.y > sys.height - 20) this.vy -= 0.3;
+
+    this.phaseOffset += (0.04 + (pId === 3 ? 0.08 : 0.02)) * tempo;
+  }
+}
+
+// 6.3 RainDropAgent: Gotas de lluvia (gravedad + arrastre + dilución de pigmento)
+class RainDropAgent {
+  constructor(sys) {
+    this.sys = sys;
+    this.reset();
+  }
+  reset() {
+    const sys = this.sys;
+    this.x = Math.random() * sys.width;
+    this.y = -10 - Math.random() * 50;
+    this.px = this.x;
+    this.py = this.y;
+    this.vx = (Math.random() - 0.5) * 0.4;
+    this.vy = 4.0 + Math.random() * 3.5;
+    this.len = 10 + Math.random() * 15;
+    this.alpha = 0.25 + Math.random() * 0.35;
+    this.dead = false;
+  }
+  update(tempo, intensity) {
+    if (this.dead) return;
+    this.px = this.x;
+    this.py = this.y;
+
+    const sys = this.sys;
+    const flow = sys.flowField.getVector(this.x, this.y);
+
+    const pigmentDensity = sys.colorGrid.getDensity(this.x, this.y);
+    const viscosity = 1.0 - pigmentDensity * 0.35;
+
+    this.vx += (flow.x * 0.35) * tempo;
+    this.vy += (0.45 * intensity) * tempo;
+    this.vx *= viscosity;
+    this.vy *= viscosity;
+
+    this.x += this.vx * tempo;
+    this.y += this.vy * tempo;
+
+    if (pigmentDensity > 0.15) {
+      sys.colorGrid.drag(this.px, this.py, this.x, this.y, 0.22 * tempo);
+    }
+
+    if (this.y > sys.height + 20 || this.x < -20 || this.x > sys.width + 20) {
+      this.reset();
+    }
+  }
+}
+
+// 6.4 SmokeAshAgent: Humo y Ceniza con flotabilidad térmica
+class SmokeAshAgent {
+  constructor(sys, isAsh = false) {
+    this.sys = sys;
+    this.isAsh = isAsh;
+    this.reset();
+  }
+  reset() {
+    const sys = this.sys;
+    const pId = sys.phase.id;
+    this.life = 0;
+    this.maxLife = 90 + Math.random() * 130;
+    this.dead = false;
+
+    if (this.isAsh) {
+      this.x = Math.random() * sys.width;
+      this.y = -10;
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = 0.6 + Math.random() * 0.8;
+      this.radius = 1.2 + Math.random() * 1.5;
+      this.alpha = 0.4 + Math.random() * 0.3;
+    } else {
+      const cx = sys.width * 0.5;
+      const cy = sys.height * (pId === 3 ? 0.64 : 0.60);
+      this.x = cx + (Math.random() - 0.5) * 25;
+      this.y = cy + (Math.random() - 0.5) * 15;
+      this.vx = (Math.random() - 0.5) * 0.8;
+      this.vy = -1.2 - Math.random() * 1.5;
+      this.radius = 6.0 + Math.random() * 8.0;
+      this.alpha = 0.18 + Math.random() * 0.12;
+    }
+  }
+  update(tempo, intensity, windVec) {
+    if (this.dead) return;
+    this.life += tempo;
+
+    const sys = this.sys;
+    const flow = sys.flowField.getVector(this.x, this.y);
+
+    if (this.isAsh) {
+      this.vx = FastMath.lerp(this.vx, flow.x * 0.8, 0.05 * tempo);
+      this.vy = FastMath.lerp(this.vy, flow.y * 0.8 + 0.6, 0.05 * tempo);
+    } else {
+      const buoyancy = -0.8 * intensity * (sys.phase.id === 3 ? 1.8 : 1.0);
+      this.vx = FastMath.lerp(this.vx, flow.x * 1.2, 0.06 * tempo);
+      this.vy = FastMath.lerp(this.vy, flow.y * 0.8 + buoyancy, 0.06 * tempo);
+      this.radius += 0.12 * tempo;
+    }
+
+    if (windVec && windVec.active) {
+      const dx = this.x - windVec.x;
+      const dy = this.y - windVec.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 300) {
+        const f = (1.0 - dist / 300) * windVec.strength;
+        this.vx += windVec.dirX * f * 2.5;
+        this.vy += windVec.dirY * f * 2.5;
+      }
+    }
+
+    this.x += this.vx * tempo;
+    this.y += this.vy * tempo;
+
+    if (this.life >= this.maxLife || this.y < -50 || this.y > sys.height + 50) {
+      this.reset();
+    }
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 7: PhaseManager & Paletas Cromáticas
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class PhaseManager {
+  constructor(sys) {
+    this.sys = sys;
+    this.id = 1;
+    this.targetId = 1;
+    this.tempo = 0.6;
+    this.transProgress = 1.0;
+    this.rebirthActive = false;
+    this.extinctionRadius = 800;
+
+    this.phases = {
+      1: {
+        id: 1,
+        name: "FASE 1 — El Bosque",
+        tempo: 0.6,
+        wPhys: 0.25,
+        palette: [
+          { r: 0.22, g: 0.26, b: 0.20 },
+          { r: 0.35, g: 0.40, b: 0.28 },
+          { r: 0.58, g: 0.44, b: 0.24 },
+          { r: 0.42, g: 0.25, b: 0.16 },
+          { r: 0.72, g: 0.66, b: 0.54 },
+          { r: 0.25, g: 0.24, b: 0.22 }
+        ]
+      },
+      2: {
+        id: 2,
+        name: "FASE 2 — Caída y Agua",
+        tempo: 0.9,
+        wPhys: 0.75,
+        palette: [
+          { r: 0.25, g: 0.28, b: 0.22 },
+          { r: 0.48, g: 0.38, b: 0.25 },
+          { r: 0.38, g: 0.22, b: 0.18 },
+          { r: 0.68, g: 0.42, b: 0.45 }, // Rosa terroso (Ref 3 y 4)
+          { r: 0.78, g: 0.62, b: 0.32 }, // Oro viejo húmedo (Ref 3)
+          { r: 0.82, g: 0.76, b: 0.68 }
+        ]
+      },
+      3: {
+        id: 3,
+        name: "FASE 3 — La Fogata",
+        tempo: 1.3,
+        wPhys: 0.50,
+        palette: [
+          { r: 0.38, g: 0.08, b: 0.08 },
+          { r: 0.82, g: 0.16, b: 0.08 },
+          { r: 0.94, g: 0.48, b: 0.10 },
+          { r: 0.98, g: 0.78, b: 0.22 },
+          { r: 0.99, g: 0.92, b: 0.65 }
+        ]
+      },
+      4: {
+        id: 4,
+        name: "FASE 4 — Apagado y Renacimiento",
+        tempo: 0.6,
+        wPhys: 0.80,
+        palettePreB: [
+          { r: 0.12, g: 0.10, b: 0.10 },
+          { r: 0.06, g: 0.05, b: 0.05 },
+          { r: 0.18, g: 0.14, b: 0.12 }
+        ],
+        paletteRebirth: [
+          { r: 0.10, g: 0.20, b: 0.42 }, // Índigo
+          { r: 0.18, g: 0.38, b: 0.65 }, // Azul cobalto
+          { r: 0.35, g: 0.60, b: 0.82 }, // Azul cerúleo
+          { r: 0.78, g: 0.88, b: 0.96 },
+          { r: 0.96, g: 0.98, b: 1.00 }  // Blanco puro ornamental (Ref 7)
+        ]
+      }
+    };
+  }
+  setTargetPhase(targetId) {
+    if (targetId < 1 || targetId > 4 || targetId === this.id) return;
+    this.targetId = targetId;
+    this.transProgress = 0.0;
+    if (targetId !== 4) this.rebirthActive = false;
+    this.extinctionRadius = Math.max(this.sys.width, this.sys.height) * 0.8;
+  }
+  triggerRebirth() {
+    if (this.id === 4) {
+      this.rebirthActive = true;
+      this.sys.spawnRebirthBurst();
+    }
+  }
+  update(dt) {
+    if (this.transProgress < 1.0) {
+      const targetTempo = this.phases[this.targetId].tempo;
+      this.transProgress += (dt * targetTempo * 0.35);
+      if (this.transProgress >= 1.0) {
+        this.transProgress = 1.0;
+        this.id = this.targetId;
+      }
+    }
+    const curP = this.phases[this.id];
+    const tgtP = this.phases[this.targetId];
+    this.tempo = FastMath.lerp(curP.tempo, tgtP.tempo, this.transProgress);
+
+    if (this.id === 4 && !this.rebirthActive) {
+      const minRadius = 45;
+      this.extinctionRadius = Math.max(minRadius, this.extinctionRadius - 0.4 * this.tempo);
+    }
+  }
+  getCurrentWPhys() {
+    const curP = this.phases[this.id];
+    const tgtP = this.phases[this.targetId];
+    return FastMath.lerp(curP.wPhys, tgtP.wPhys, this.transProgress);
+  }
+}
+
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO 8: Particle & Visual Instrument Engine (Engine Principal)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+class VisualInstrument {
+  constructor() {
+    this.canvasPaint = document.getElementById('canvas-paint');
+    this.ctxPaint = this.canvasPaint.getContext('2d');
+    this.canvasOverlay = document.getElementById('canvas-overlay');
+    this.ctxOverlay = this.canvasOverlay.getContext('2d');
+
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+
+    this.intensity = 1.0;
+    this.perceptionRadius = 45;
+    this.pulseVal = 0.0;
+    this.windVec = { x: 0, y: 0, dirX: 1, dirY: 0, strength: 0, active: false };
+
+    this.phase = new PhaseManager(this);
+    this.spatialGrid = new SpatialGrid(this.width, this.height, 45);
+    this.colorGrid = new ColorGrid(this.width, this.height);
+    this.physarum = new PhysarumSimulation(this.width, this.height);
+    this.flowField = new FlowField(this.width, this.height, 16);
+
+    this.brushAgents = [];
+    this.fireflies = [];
+    this.rainDrops = [];
+    this.smokeAgents = [];
+    this.ashAgents = [];
+
+    this.lastTime = performance.now();
+    this.fps = 60;
+    this.framesCount = 0;
+    this.fpsTimer = performance.now();
+
+    this.initCanvasAndPaper();
+    this.initAgents();
+    this.setupEvents();
+    this.setupCursorIdle();
+
+    requestAnimationFrame(this.render.bind(this));
+  }
+
+  initCanvasAndPaper() {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.canvasPaint.width = this.width;
+    this.canvasPaint.height = this.height;
+    this.canvasOverlay.width = this.width;
+    this.canvasOverlay.height = this.height;
+
+    this.spatialGrid.resize(this.width, this.height);
+    this.colorGrid.resize(this.width, this.height);
+    this.physarum.resize(this.width, this.height);
+    this.flowField.resize(this.width, this.height);
+
+    this.drawPaperBackground();
+  }
+
+  drawPaperBackground() {
+    const ctx = this.ctxPaint;
+    ctx.fillStyle = "#e9e3d8";
+    ctx.fillRect(0, 0, this.width, this.height);
+
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = 128;
+    offCanvas.height = 128;
+    const offCtx = offCanvas.getContext('2d');
+    const imgData = offCtx.createImageData(128, 128);
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      const noise = (Math.random() - 0.5) * 22;
+      imgData.data[i] = 230 + noise;
+      imgData.data[i + 1] = 222 + noise;
+      imgData.data[i + 2] = 210 + noise;
+      imgData.data[i + 3] = 16;
+    }
+    offCtx.putImageData(imgData, 0, 0);
+
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    const pat = ctx.createPattern(offCanvas, 'repeat');
+    ctx.fillStyle = pat;
+    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.restore();
+  }
+
+  initAgents() {
+    const brushCount = 3800;
+    this.brushAgents = [];
+    for (let i = 0; i < brushCount; i++) {
+      this.brushAgents.push(new BrushAgent(this));
+    }
+
+    const fireflyCount = 140;
+    this.fireflies = [];
+    for (let i = 0; i < fireflyCount; i++) {
+      this.fireflies.push(new FireflyAgent(this));
+    }
+
+    const rainCount = 200;
+    this.rainDrops = [];
+    for (let i = 0; i < rainCount; i++) {
+      this.rainDrops.push(new RainDropAgent(this));
+    }
+
+    const smokeCount = 160;
+    this.smokeAgents = [];
+    for (let i = 0; i < smokeCount; i++) {
+      this.smokeAgents.push(new SmokeAshAgent(this, false));
+    }
+
+    const ashCount = 80;
+    this.ashAgents = [];
+    for (let i = 0; i < ashCount; i++) {
+      this.ashAgents.push(new SmokeAshAgent(this, true));
+    }
+
+    this.physarum.initAgents(600, this.width, this.height);
+  }
+
+  pickColorForAgent(x, y) {
+    const pId = this.phase.id;
+    let pal;
+    if (pId === 4) {
+      pal = this.phase.rebirthActive ? this.phase.phases[4].paletteRebirth : this.phase.phases[4].palettePreB;
+    } else {
+      pal = this.phase.phases[pId].palette;
+    }
+    const base = pal[Math.floor(Math.random() * pal.length)];
+    const jitter = (Math.random() - 0.5) * 0.04;
+    return {
+      r: FastMath.clamp(base.r + jitter, 0, 1),
+      g: FastMath.clamp(base.g + jitter, 0, 1),
+      b: FastMath.clamp(base.b + jitter, 0, 1)
+    };
+  }
+
+  getRandomSeedStar() {
+    if (this.fireflies.length === 0) return null;
+    return this.fireflies[Math.floor(Math.random() * this.fireflies.length)];
+  }
+
+  triggerSpaceAction(mouseX, mouseY) {
+    const pId = this.phase.id;
+    const mx = mouseX || this.width * 0.5;
+    const my = mouseY || this.height * 0.5;
+
+    if (pId === 1) {
+      for (let i = 0; i < 450; i++) {
+        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        agent.dead = false;
+        agent.life = 0;
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 20 + Math.random() * 120;
+        agent.x = mx + Math.cos(angle) * rad;
+        agent.y = my + Math.sin(angle) * rad;
+        agent.px = agent.x;
+        agent.py = agent.y;
+        agent.vx = Math.cos(angle) * (3.0 + Math.random() * 3.5);
+        agent.vy = Math.sin(angle) * (3.0 + Math.random() * 3.5);
+        agent.color = {
+          r: 0.88 + Math.random() * 0.1,
+          g: 0.42 + Math.random() * 0.2,
+          b: 0.12 + Math.random() * 0.1
+        };
+      }
+    } else if (pId === 2) {
+      this.colorGrid.diluteCircle(mx, my, 180, 0.45);
+      for (let i = 0; i < 60; i++) {
+        const drop = this.rainDrops[i];
+        drop.x = mx + (Math.random() - 0.5) * 60;
+        drop.y = my + (Math.random() - 0.5) * 60;
+        drop.vx = (Math.random() - 0.5) * 4.0;
+        drop.vy = 2.0 + Math.random() * 4.0;
+      }
+    } else if (pId === 3) {
+      for (let i = 0; i < 500; i++) {
+        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        agent.dead = false;
+        agent.life = 0;
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * 90;
+        agent.x = mx + Math.cos(a) * r;
+        agent.y = my + Math.sin(a) * r;
+        agent.px = agent.x;
+        agent.py = agent.y;
+        agent.vx = Math.cos(a + Math.PI*0.5) * 4.0;
+        agent.vy = -3.5 - Math.random() * 4.0;
+        agent.color = { r: 1.0, g: 0.85, b: 0.35 };
+      }
+    } else if (pId === 4) {
+      for (let i = 0; i < 350; i++) {
+        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        agent.dead = false;
+        agent.life = 0;
+        const theta = (i / 350) * Math.PI * 6;
+        const rad = 5 + theta * 12;
+        agent.x = mx + Math.cos(theta) * rad;
+        agent.y = my + Math.sin(theta) * rad;
+        agent.px = agent.x;
+        agent.py = agent.y;
+        agent.vx = -Math.sin(theta) * 2.2;
+        agent.vy = Math.cos(theta) * 2.2;
+        agent.width = 1.0 + Math.random() * 2.0;
+        agent.color = Math.random() > 0.4 ? { r: 0.98, g: 0.99, b: 1.0 } : { r: 0.3, g: 0.55, b: 0.88 };
+      }
+    }
+  }
+
+  triggerInterpreterPulse() {
+    this.pulseVal = 1.0;
+    const pId = this.phase.id;
+
+    if (pId === 1) {
+      for (let i = 0; i < 40; i++) {
+        const s = new SmokeAshAgent(this, false);
+        s.vy *= 1.8;
+        this.smokeAgents.push(s);
+      }
+    } else if (pId === 2) {
+      for (let i = 0; i < this.rainDrops.length; i++) {
+        const r = this.rainDrops[i];
+        r.y = Math.random() * (this.height * 0.3);
+        r.vy += 3.0;
+      }
+    } else if (pId === 3) {
+      for (let i = 0; i < 300; i++) {
+        const a = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        a.dead = false;
+        a.life = 0;
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 4.0 + Math.random() * 4.5;
+        a.x = this.width * 0.5;
+        a.y = this.height * 0.62;
+        a.px = a.x;
+        a.py = a.y;
+        a.vx = Math.cos(ang) * spd;
+        a.vy = Math.sin(ang) * spd;
+        a.color = { r: 1.0, g: 0.92, b: 0.45 };
+      }
+    } else if (pId === 4) {
+      for (let i = 0; i < 60; i++) {
+        const drop = this.rainDrops[i];
+        drop.x = Math.random() * this.width;
+        drop.y = Math.random() * this.height * 0.4;
+        drop.vy = 2.5 + Math.random() * 2.0;
+      }
+    }
+  }
+
+  triggerWind(mx, my) {
+    const cx = this.width * 0.5;
+    const cy = this.height * 0.5;
+    const dx = mx - cx;
+    const dy = my - cy;
+    const len = Math.sqrt(dx*dx + dy*dy) + 0.1;
+    this.windVec = {
+      x: mx,
+      y: my,
+      dirX: dx / len,
+      dirY: dy / len,
+      strength: 1.0,
+      active: true
+    };
+  }
+
+  triggerAshCurtain() {
+    for (let i = 0; i < 90; i++) {
+      const ash = new SmokeAshAgent(this, true);
+      ash.x = (this.width * i) / 90 + (Math.random() - 0.5) * 20;
+      ash.y = -5 - Math.random() * 20;
+      this.ashAgents.push(ash);
+    }
+  }
+
+  spawnRebirthBurst() {
+    for (let i = 0; i < this.fireflies.length; i++) {
+      const f = this.fireflies[i];
+      this.physarum.deposit(f.x, f.y, 3.5);
+
+      for (let j = 0; j < 15; j++) {
+        const agent = this.brushAgents[Math.floor(Math.random() * this.brushAgents.length)];
+        agent.dead = false;
+        agent.life = 0;
+        const ang = Math.random() * Math.PI * 2;
+        const rad = Math.random() * 25;
+        agent.x = f.x + Math.cos(ang) * rad;
+        agent.y = f.y + Math.sin(ang) * rad;
+        agent.px = agent.x;
+        agent.py = agent.y;
+        agent.vx = Math.cos(ang) * 2.5;
+        agent.vy = Math.sin(ang) * 2.5;
+        agent.color = { r: 0.12, g: 0.32, b: 0.68 };
+      }
+    }
+  }
+
+  setupEvents() {
+    window.addEventListener('resize', () => {
+      this.initCanvasAndPaper();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+
+      if (key === '1') this.phase.setTargetPhase(1);
+      else if (key === '2') this.phase.setTargetPhase(2);
+      else if (key === '3') this.phase.setTargetPhase(3);
+      else if (key === '4') this.phase.setTargetPhase(4);
+      else if (e.key === 'ArrowRight') this.phase.setTargetPhase(Math.min(4, this.phase.id + 1));
+      else if (e.key === 'ArrowLeft') this.phase.setTargetPhase(Math.max(1, this.phase.id - 1));
+
+      else if (e.code === 'Space') {
+        e.preventDefault();
+        this.triggerSpaceAction(this.lastMouseX, this.lastMouseY);
+      }
+      else if (key === 'z') {
+        this.triggerInterpreterPulse();
+      }
+      else if (key === 'x') {
+        this.triggerWind(this.lastMouseX || this.width*0.5, this.lastMouseY || this.height*0.5);
+      }
+      else if (key === 'c') {
+        this.triggerAshCurtain();
+      }
+      else if (key === 'b') {
+        this.phase.triggerRebirth();
+      }
+
+      else if (e.key === 'ArrowUp') {
+        this.intensity = Math.min(2.0, this.intensity + 0.15);
+      }
+      else if (e.key === 'ArrowDown') {
+        this.intensity = Math.max(0.3, this.intensity - 0.15);
+      }
+      else if (key === 'a') {
+        this.flowField.turbulence = Math.max(0.1, this.flowField.turbulence - 0.1);
+      }
+      else if (key === 'd') {
+        this.flowField.turbulence = Math.min(1.2, this.flowField.turbulence + 0.1);
+      }
+      else if (key === 's') {
+        this.perceptionRadius = this.perceptionRadius >= 70 ? 25 : this.perceptionRadius + 15;
+      }
+      else if (key === 'r') {
+        this.flowField.reseed();
+      }
+      else if (key === 'f') {
+        this.toggleFullscreen();
+      }
+      else if (key === 'h') {
+        this.toggleHUD();
+      }
+
+      this.updateHUDText();
+    });
+
+    window.addEventListener('wheel', (e) => {
+      this.flowField.turbulence = FastMath.clamp(this.flowField.turbulence + e.deltaY * 0.001, 0.1, 1.2);
+    }, { passive: true });
+
+    window.addEventListener('mousemove', (e) => {
+      this.lastMouseX = e.clientX;
+      this.lastMouseY = e.clientY;
+      this.resetCursorIdle();
+    });
+  }
+
+  toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  }
+
+  toggleHUD() {
+    const hud = document.getElementById('hud');
+    hud.classList.toggle('visible');
+  }
+
+  setupCursorIdle() {
+    this.idleTimer = null;
+    this.resetCursorIdle();
+  }
+
+  resetCursorIdle() {
+    document.body.style.cursor = 'default';
+    clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      document.body.style.cursor = 'none';
+    }, 2500);
+  }
+
+  updateHUDText() {
+    const pId = this.phase.id;
+    const hudPhase = document.getElementById('hud-phase-name');
+    const hudTempo = document.getElementById('hud-tempo');
+    const hudIntensity = document.getElementById('hud-intensity');
+    const hudTurb = document.getElementById('hud-turb');
+    const hudPercep = document.getElementById('hud-percep');
+    const hudRebirth = document.getElementById('hud-rebirth');
+    const hudSpace = document.getElementById('hud-key-space');
+    const quickPill = document.getElementById('quick-pill');
+
+    const names = {
+      1: "FASE 1 — El Bosque",
+      2: "FASE 2 — Caída y Agua",
+      3: "FASE 3 — La Fogata",
+      4: "FASE 4 — Apagado y Renacimiento"
+    };
+    hudPhase.textContent = names[pId];
+    quickPill.textContent = `${names[pId]} (Tempo ${this.phase.tempo.toFixed(2)}) | [H] Info`;
+
+    hudTempo.textContent = this.phase.tempo.toFixed(2);
+    hudIntensity.textContent = this.intensity.toFixed(2);
+    hudTurb.textContent = this.flowField.turbulence.toFixed(2);
+    hudPercep.textContent = `${this.perceptionRadius}px`;
+    hudRebirth.textContent = pId === 4 ? (this.phase.rebirthActive ? "Renacimiento Azul" : "Consumiéndose") : "Inactivo";
+
+    if (pId === 1) hudSpace.textContent = "Brote otoñal de hojas naranjas en ramas";
+    else if (pId === 2) hudSpace.textContent = "Mancha de agua en el ratón (dilución)";
+    else if (pId === 3) hudSpace.textContent = "Empuje de llamas ascendente (vórtice)";
+    else if (pId === 4) hudSpace.textContent = "Espirales y filigranas de acuarela blanca (Ref 7)";
+  }
+
+  render(now) {
+    const dt = Math.min(0.05, (now - this.lastTime) * 0.001);
+    this.lastTime = now;
+
+    this.framesCount++;
+    if (now - this.fpsTimer >= 1000) {
+      this.fps = this.framesCount;
+      this.framesCount = 0;
+      this.fpsTimer = now;
+      const fpsEl = document.getElementById('hud-fps');
+      if (fpsEl) fpsEl.textContent = this.fps;
+    }
+
+    this.phase.update(dt);
+    const tempo = this.phase.tempo;
+    const wPhys = this.phase.getCurrentWPhys();
+    const pId = this.phase.id;
+
+    if (this.pulseVal > 0.001) {
+      this.pulseVal *= Math.max(0.85, 1.0 - 0.08 * tempo);
+    } else {
+      this.pulseVal = 0.0;
+    }
+
+    if (this.windVec.active) {
+      this.windVec.strength *= 0.94;
+      if (this.windVec.strength < 0.02) this.windVec.active = false;
+    }
+
+    this.flowField.update(this.phase, tempo, now, this.pulseVal, this.windVec);
+    this.physarum.update(tempo);
+
+    this.spatialGrid.clear();
+    for (let i = 0; i < this.fireflies.length; i++) {
+      this.spatialGrid.insert(this.fireflies[i]);
+    }
+
+    const ctxP = this.ctxPaint;
+
+    if (pId === 1 || pId === 2) {
+      ctxP.fillStyle = "rgba(233, 227, 216, 0.0035)";
+      ctxP.fillRect(0, 0, this.width, this.height);
+    } else if (pId === 3) {
+      ctxP.fillStyle = "rgba(18, 14, 12, 0.004)";
+      ctxP.fillRect(0, 0, this.width, this.height);
+    } else if (pId === 4 && !this.phase.rebirthActive) {
+      ctxP.fillStyle = "rgba(10, 8, 8, 0.002)";
+      ctxP.fillRect(0, 0, this.width, this.height);
+    }
+
+    ctxP.lineCap = "round";
+    ctxP.lineJoin = "round";
+    ctxP.globalCompositeOperation = "source-over";
+
+    const bLen = this.brushAgents.length;
+    for (let i = 0; i < bLen; i++) {
+      const a = this.brushAgents[i];
+      a.update(tempo, wPhys, this.intensity);
+
+      const dx = a.x - a.px;
+      const dy = a.y - a.py;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 0.4 && dist < 50) {
+        ctxP.beginPath();
+        ctxP.moveTo(a.px, a.py);
+        ctxP.lineTo(a.x, a.y);
+        ctxP.lineWidth = a.width;
+
+        const strokeAlpha = Math.min(0.28, 0.08 + (1.0 / (dist + 1.0)) * 0.12);
+        const r255 = Math.floor(a.color.r * 255);
+        const g255 = Math.floor(a.color.g * 255);
+        const b255 = Math.floor(a.color.b * 255);
+        ctxP.strokeStyle = `rgba(${r255}, ${g255}, ${b255}, ${strokeAlpha})`;
+        ctxP.stroke();
+      }
+    }
+
+    const ctxO = this.ctxOverlay;
+    ctxO.clearRect(0, 0, this.width, this.height);
+
+    for (let i = 0; i < this.smokeAgents.length; i++) {
+      const sm = this.smokeAgents[i];
+      sm.update(tempo, this.intensity, this.windVec);
+      const rad = sm.radius;
+      const grad = ctxO.createRadialGradient(sm.x, sm.y, 0, sm.x, sm.y, rad);
+      const sAlpha = sm.alpha * (1.0 - sm.life / sm.maxLife);
+      grad.addColorStop(0, `rgba(180, 172, 160, ${sAlpha})`);
+      grad.addColorStop(1, `rgba(180, 172, 160, 0)`);
+      ctxO.fillStyle = grad;
+      ctxO.beginPath();
+      ctxO.arc(sm.x, sm.y, rad, 0, Math.PI * 2);
+      ctxO.fill();
+    }
+
+    for (let i = 0; i < this.ashAgents.length; i++) {
+      const ash = this.ashAgents[i];
+      ash.update(tempo, this.intensity, this.windVec);
+      ctxO.fillStyle = `rgba(220, 215, 205, ${ash.alpha})`;
+      ctxO.beginPath();
+      ctxO.arc(ash.x, ash.y, ash.radius, 0, Math.PI * 2);
+      ctxO.fill();
+    }
+
+    if (pId === 2 || pId === 4) {
+      ctxO.lineWidth = 1.2;
+      for (let i = 0; i < this.rainDrops.length; i++) {
+        const drop = this.rainDrops[i];
+        drop.update(tempo, this.intensity);
+        ctxO.beginPath();
+        ctxO.moveTo(drop.px, drop.py);
+        ctxO.lineTo(drop.x, drop.y + drop.len * 0.4);
+        const dropColor = pId === 4 ? `rgba(140, 185, 230, ${drop.alpha})` : `rgba(180, 175, 165, ${drop.alpha})`;
+        ctxO.strokeStyle = dropColor;
+        ctxO.stroke();
+      }
+    }
+
+    if (pId === 1 || pId === 3) {
+      const fcX = this.width * 0.5;
+      const fcY = this.height * (pId === 3 ? 0.62 : 0.58);
+      const fBaseRadius = pId === 3 ? 90 : 35;
+      const fPulse = (1.0 + this.pulseVal * 0.8 + Math.sin(now * 0.006) * 0.15) * fBaseRadius;
+
+      const fireGrad = ctxO.createRadialGradient(fcX, fcY, 0, fcX, fcY, fPulse);
+      if (pId === 3) {
+        fireGrad.addColorStop(0, "rgba(255, 250, 210, 0.95)");
+        fireGrad.addColorStop(0.35, "rgba(255, 140, 20, 0.55)");
+        fireGrad.addColorStop(0.7, "rgba(210, 30, 20, 0.2)");
+        fireGrad.addColorStop(1, "rgba(180, 20, 10, 0)");
+      } else {
+        fireGrad.addColorStop(0, "rgba(255, 220, 150, 0.85)");
+        fireGrad.addColorStop(0.4, "rgba(230, 130, 40, 0.4)");
+        fireGrad.addColorStop(1, "rgba(210, 90, 30, 0)");
+      }
+      ctxO.fillStyle = fireGrad;
+      ctxO.beginPath();
+      ctxO.arc(fcX, fcY, fPulse, 0, Math.PI * 2);
+      ctxO.fill();
+    }
+
+    const fCount = this.fireflies.length;
+    for (let i = 0; i < fCount; i++) {
+      const f = this.fireflies[i];
+      f.update(tempo, this.intensity, this.perceptionRadius, this.pulseVal);
+
+      const flicker = 0.5 + Math.sin(now * 0.005 + f.phaseOffset) * 0.5;
+      let haloR = 4.0 + flicker * 7.0;
+
+      let colorCore = "rgba(255, 245, 180, 0.95)";
+      let colorHalo = "rgba(255, 210, 90, 0.35)";
+
+      if (pId === 4) {
+        if (!this.phase.rebirthActive) {
+          haloR = 3.0 + flicker * 3.0;
+          colorCore = "rgba(220, 225, 240, 0.8)";
+          colorHalo = "rgba(180, 195, 225, 0.2)";
+        } else {
+          haloR = 6.0 + flicker * 12.0;
+          colorCore = "rgba(240, 250, 255, 0.98)";
+          colorHalo = "rgba(80, 160, 255, 0.5)";
+        }
+      } else if (pId === 3) {
+        haloR = 5.0 + flicker * 10.0;
+        colorCore = "rgba(255, 255, 220, 1.0)";
+        colorHalo = "rgba(255, 140, 40, 0.55)";
+      }
+
+      const haloGrad = ctxO.createRadialGradient(f.x, f.y, 0, f.x, f.y, haloR);
+      haloGrad.addColorStop(0, colorHalo);
+      haloGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctxO.fillStyle = haloGrad;
+      ctxO.beginPath();
+      ctxO.arc(f.x, f.y, haloR, 0, Math.PI * 2);
+      ctxO.fill();
+
+      ctxO.fillStyle = colorCore;
+      ctxO.beginPath();
+      ctxO.arc(f.x, f.y, 1.4, 0, Math.PI * 2);
+      ctxO.fill();
+    }
+
+    requestAnimationFrame(this.render.bind(this));
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  window.instrument = new VisualInstrument();
+});
+</script>
+</body>
+</html>
