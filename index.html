@@ -1646,7 +1646,6 @@ class PhaseManager {
         bgColor: "#E8DCC8",
         physarumDesc: "Physarum domina (wPhys 0.75): los canales guían pigmento; flocking (w 0.12) separa, alinea y agrupa las hebras escurridas.",
         palette: [
-          // Salvia, musgo, lavanda, rosa, coral, miel y moca; teales/grises <15%.
           "#7F9272", "#82936C", "#65785B", "#A9B89A", "#7FA99B",
           "#A288A6", "#B59BB8", "#C5B7D1", "#96728A", "#846B85",
           "#D99B9B", "#E3BFC0", "#DA8275", "#C46D65", "#E8A598",
@@ -1660,7 +1659,7 @@ class PhaseManager {
         tempo: 1.3,
         wPhys: 0.50,
         targetDensity: 0.85,
-        bgColor: "#0D0B12", // Tinta oscura
+        bgColor: "#0D0B12",
         physarumDesc: "Convección del campo y Physarum (w 0.50) mueven brasas; flocking tenue (w 0.10) alinea filamentos sin cambiar el modo dinámico.",
         coalPal: ["#2B1626", "#3E1D2E", "#5A2539", "#7E2F3E"],
         emberPal: ["#B5483F", "#D9694F", "#E9805F", "#F2A25F"],
@@ -1685,9 +1684,9 @@ class PhaseManager {
   }
   setTargetPhase(targetId) {
     if (targetId < 1 || targetId > 4 || targetId === this.toId) return;
-    this.fromId = this.effectivePhaseAt(this.sys.width * 0.5, this.sys.height * 0.5);
+    this.fromId = this.toId; // Actualiza inmediatamente la fase origen
     this.toId = targetId;
-    this.transTimer = 0.0; // Inicia frente espacial inmediato (<1s)
+    this.transTimer = 0.0;
     if (targetId === 1) { this.sys.f1Elapsed = 0; this.sys.f1SmokeEmittedForEntry = false; }
     if (targetId !== 4) { this.rebirthActive = false; this.sys.rebirthWaveActive = false; }
     this.extinctionRadius = Math.max(this.sys.width, this.sys.height) * 0.9;
@@ -1714,7 +1713,6 @@ class PhaseManager {
     this.tempo = FastMath.lerp(curP.tempo, tgtP.tempo, FastMath.smoothstep(0, 1, p));
 
     if (this.toId === 4 && !this.rebirthActive) {
-      // Contracción centrípeta de radio de extinción hasta ~12% del lado menor
       const minRadius = Math.min(this.sys.width, this.sys.height) * 0.12;
       this.extinctionRadius = Math.max(minRadius, this.extinctionRadius - 0.45 * this.tempo);
     }
@@ -1724,19 +1722,8 @@ class PhaseManager {
     const p = this.transTimer / this.transDuration;
     const sys = this.sys;
 
-    if (this.fromId === 1 && this.toId === 2) {
-      // F1 -> F2: De arriba hacia abajo
-      const frontY = p * (sys.height + 200) - 100;
-      return 1.0 - FastMath.smoothstep(frontY - 120, frontY + 120, y);
-    } else if (this.fromId === 2 && this.toId === 3) {
-      // F2 -> F3: Del centro hacia afuera
-      const cx = sys.width * 0.5, cy = sys.height * 0.5;
-      const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
-      const frontR = p * maxR;
-      const d = Math.sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy));
-      return 1.0 - FastMath.smoothstep(frontR - 140, frontR + 140, d);
-    } else if (this.fromId === 3 && this.toId === 4) {
-      // F3 -> F4: De la periferia al centro
+    if (this.fromId === 3 && this.toId === 4) {
+      // F3 -> F4: Oscurecimiento periférico hacia el centro
       const cx = sys.width * 0.5, cy = sys.height * 0.5;
       const maxR = Math.sqrt(cx*cx + cy*cy) * 1.1;
       const frontR = (1.0 - p) * maxR;
@@ -1759,7 +1746,6 @@ class PhaseManager {
     return FastMath.lerp(curP.wPhys, tgtP.wPhys, FastMath.smoothstep(0, 1, p));
   }
 }
-
 /**
  * ══════════════════════════════════════════════════════════════════════════════
  * MÓDULO 8: Particle & Visual Instrument Engine (Render Batching & Transiciones)
@@ -2386,12 +2372,19 @@ class VisualInstrument {
     }
   }
 
-  startRebirthWave() {
+startRebirthWave() {
+    // 1. Forzar el centro exacto de la pantalla en lugar de agentes aleatorios
+    const cx = this.width * 0.5;
+    const cy = this.height * 0.5;
     this.rebirthSeeds = [];
+    
     for (let i = 0; i < 5; i++) {
-      const seed = this.getRandomActiveAgent();
-      this.rebirthSeeds.push({ x: seed.x, y: seed.y });
+      this.rebirthSeeds.push({
+        x: cx + (Math.random() - 0.5) * 40,
+        y: cy + (Math.random() - 0.5) * 40
+      });
     }
+
     this.rebirthWaveDuration = 10 + Math.random() * 4;
     this.rebirthWaveElapsed = 0;
     this.rebirthWaveActive = true;
@@ -2400,10 +2393,13 @@ class VisualInstrument {
     this.rebirthSourceCtx.drawImage(this.canvasBg, 0, 0);
     this.rebirthDistances = new Float32Array(this.colorGrid.w * this.colorGrid.h);
     this.rebirthPreviousAlpha = new Float32Array(this.colorGrid.w * this.colorGrid.h);
+
+    // 2. Corregir el cálculo de escala para que la distancia se mida bien en cualquier PC
+    const invScale = 1.0 / this.colorGrid.scale;
     for (let y = 0; y < this.colorGrid.h; y++) {
       for (let x = 0; x < this.colorGrid.w; x++) {
-        const px = (x + 0.5) / this.colorGrid.scale;
-        const py = (y + 0.5) / this.colorGrid.scale;
+        const px = (x + 0.5) * invScale;
+        const py = (y + 0.5) * invScale;
         let nearest = Infinity;
         for (const seed of this.rebirthSeeds) {
           nearest = Math.min(nearest, Math.hypot(px - seed.x, py - seed.y));
