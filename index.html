@@ -183,6 +183,26 @@
       font-family: monospace;
       box-shadow: 0 4px 12px rgba(60, 45, 35, 0.12);
     }
+    #hud-toggle {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 12;
+      border: 1px solid rgba(140, 111, 94, 0.3);
+      background: rgba(232, 220, 200, 0.82);
+      color: #4a3e33;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(60, 45, 35, 0.14);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    #hud-toggle:hover {
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 <body>
@@ -219,6 +239,7 @@ Controles (mouse independiente salvo X y clic)
 
 <!-- Minimal status pill -->
 <div id="quick-pill">Fase 1 - El Bosque (D: 0.12) | [H] ayuda</div>
+<button id="hud-toggle" type="button" aria-label="Mostrar u ocultar HUD">HUD</button>
 
 <!-- HUD Overlay -->
 <div id="hud">
@@ -733,6 +754,9 @@ class PhysarumSimulation {
     const w = this.w;
     const h = this.h;
     const invScale = 1.0 / this.scale;
+    const sin = Math.sin;
+    const cos = Math.cos;
+    const random = Math.random;
 
     for (let i = 0; i < this.agents.length; i++) {
       const a = this.agents[i];
@@ -742,12 +766,12 @@ class PhysarumSimulation {
       const sLeftAng = ang - sensorAngle;
       const sRightAng = ang + sensorAngle;
 
-      const cX = a.x + Math.cos(ang) * sDist;
-      const cY = a.y + Math.sin(ang) * sDist;
-      const lX = a.x + Math.cos(sLeftAng) * sDist;
-      const lY = a.y + Math.sin(sLeftAng) * sDist;
-      const rX = a.x + Math.cos(sRightAng) * sDist;
-      const rY = a.y + Math.sin(sRightAng) * sDist;
+      const cX = a.x + cos(ang) * sDist;
+      const cY = a.y + sin(ang) * sDist;
+      const lX = a.x + cos(sLeftAng) * sDist;
+      const lY = a.y + sin(sLeftAng) * sDist;
+      const rX = a.x + cos(sRightAng) * sDist;
+      const rY = a.y + sin(sRightAng) * sDist;
 
       const sC = this.sample(cX, cY);
       const sL = this.sample(lX, lY);
@@ -756,7 +780,7 @@ class PhysarumSimulation {
       if (sC > sL && sC > sR) {
         // Directo
       } else if (sC < sL && sC < sR) {
-        a.angle += (Math.random() > 0.5 ? 1 : -1) * rotAngle;
+        a.angle += (random() > 0.5 ? 1 : -1) * rotAngle;
       } else if (sL > sR) {
         a.angle -= rotAngle;
       } else if (sR > sL) {
@@ -764,8 +788,8 @@ class PhysarumSimulation {
       }
 
       const spd = a.speed * tempo;
-      a.x += Math.cos(a.angle) * spd;
-      a.y += Math.sin(a.angle) * spd;
+      a.x += cos(a.angle) * spd;
+      a.y += sin(a.angle) * spd;
 
       const screenW = w * invScale;
       const screenH = h * invScale;
@@ -888,17 +912,24 @@ class FlowField {
     const cs = this.cellSize;
     const t = this.time;
     const turb = this.turbulence;
+    const vortexList = this.vortices;
+    const fireFoci = this.fireFoci;
+    const noise3D = FastMath.noise3D;
+    const noise2D = FastMath.noise2D;
+    const sin = Math.sin;
+    const cos = Math.cos;
+    const sqrt = Math.sqrt;
 
     const centerX = this.width * 0.5;
     const centerY = this.height * 0.5;
 
     // Actualizar y purgar vórtices dinámicos expirados
-    for (let i = this.vortices.length - 1; i >= 0; i--) {
-      const v = this.vortices[i];
+    for (let i = vortexList.length - 1; i >= 0; i--) {
+      const v = vortexList[i];
       if (v.dynamic) {
         v.life -= (v.decayRate || 0.002) * tempo;
         if (v.life <= 0) {
-          this.vortices.splice(i, 1);
+          vortexList.splice(i, 1);
         }
       }
     }
@@ -913,23 +944,24 @@ class FlowField {
         let vx = 0, vy = 0;
 
         const nScale = 0.0016 * (1.0 + turb * 0.4);
-        const angle = FastMath.noise3D(x * nScale, y * nScale, t) * Math.PI * 4.0;
-        let baseVx = Math.cos(angle);
-        let baseVy = Math.sin(angle);
+        const angle = noise3D(x * nScale, y * nScale, t) * Math.PI * 4.0;
+        let baseVx = cos(angle);
+        let baseVy = sin(angle);
 
         // Influencia de vórtices
         let vtxVx = 0, vtxVy = 0;
-        for (let i = 0; i < this.vortices.length; i++) {
-          const v = this.vortices[i];
+        for (let i = 0; i < vortexList.length; i++) {
+          const v = vortexList[i];
           const dx = x - v.x;
           const dy = y - v.y;
-          const d2 = dx*dx + dy*dy;
+          const d2 = dx * dx + dy * dy;
           const r2 = v.radius * v.radius;
           if (d2 < r2) {
-            const dist = Math.sqrt(d2) + 0.1;
+            const dist = sqrt(d2) + 0.1;
+            const invDist = 1.0 / dist;
             const factor = (1.0 - dist / v.radius) * v.strength * (v.life !== undefined ? v.life : 1.0);
-            vtxVx += (-dy / dist) * factor * v.dir;
-            vtxVy += (dx / dist) * factor * v.dir;
+            vtxVx += (-dy * invDist) * factor * v.dir;
+            vtxVy += (dx * invDist) * factor * v.dir;
           }
         }
 
@@ -967,10 +999,10 @@ class FlowField {
           const dfy = y - centerY;
           const dFireSq = dfx*dfx + dfy*dfy;
           if (dFireSq < 26000) {
-            const fDist = Math.sqrt(dFireSq);
+            const fDist = sqrt(dFireSq);
             const fWeight = (1.0 - fDist / 160);
             vy -= fWeight * (0.65 + pulseVal * 1.3);
-            vx += (FastMath.noise2D(x * 0.03, t * 2.0) * 0.3) * fWeight;
+            vx += (noise2D(x * 0.03, t * 2.0) * 0.3) * fWeight;
           }
 
         } else if (effectiveId === 2) {
@@ -982,13 +1014,13 @@ class FlowField {
         } else if (effectiveId === 3) {
           // Fase 3: Rediseño La Fogata (vórtices grandes rotacionales + focos móviles)
           let flameVx = 0, flameVy = 0;
-          for (let fi = 0; fi < this.fireFoci.length; fi++) {
-            const foc = this.fireFoci[fi];
-            const fx = foc.baseX + Math.sin(t * 0.7 + foc.phase) * 60;
-            const fy = foc.baseY + Math.cos(t * 0.5 + foc.phase) * 45;
+          for (let fi = 0; fi < fireFoci.length; fi++) {
+            const foc = fireFoci[fi];
+            const fx = foc.baseX + sin(t * 0.7 + foc.phase) * 60;
+            const fy = foc.baseY + cos(t * 0.5 + foc.phase) * 45;
             const dx = x - fx;
             const dy = y - fy;
-            const dist = Math.sqrt(dx*dx + dy*dy) + 1.0;
+            const dist = sqrt(dx * dx + dy * dy) + 1.0;
             if (dist < foc.radius * 2.2) {
               const fFactor = (1.0 - dist / (foc.radius * 2.2));
               flameVx += -(dy / dist) * fFactor * 1.5;
@@ -1003,7 +1035,7 @@ class FlowField {
             // Apagado centrípeto
             const dx = centerX - x;
             const dy = centerY - y;
-            const dist = Math.sqrt(dx*dx + dy*dy) + 1.0;
+            const dist = sqrt(dx * dx + dy * dy) + 1.0;
             vx = baseVx * 0.3 + (dx / dist) * 0.2;
             vy = baseVy * 0.3 + (dy / dist) * 0.15 + 0.05;
           } else {
@@ -1015,7 +1047,7 @@ class FlowField {
         if (windVec && windVec.active) {
           const wdx = x - windVec.x;
           const wdy = y - windVec.y;
-          const wDist = Math.sqrt(wdx*wdx + wdy*wdy);
+          const wDist = sqrt(wdx * wdx + wdy * wdy);
           if (wDist < 350) {
             const wFactor = (1.0 - wDist / 350) * windVec.strength;
             vx += windVec.dirX * wFactor * 3.0;
@@ -2042,9 +2074,22 @@ class VisualInstrument {
   }
 
   getRandomActiveAgent() {
-    const actives = this.brushAgents.filter(a => a.active);
-    if (actives.length === 0) return { x: this.width * 0.5, y: this.height * 0.5 };
-    return actives[Math.floor(Math.random() * actives.length)];
+    let activeCount = 0;
+    for (let i = 0; i < this.brushAgents.length; i++) {
+      if (this.brushAgents[i].active) activeCount++;
+    }
+    if (activeCount === 0) return { x: this.width * 0.5, y: this.height * 0.5 };
+
+    const pick = Math.floor(Math.random() * activeCount);
+    let seen = 0;
+    for (let i = 0; i < this.brushAgents.length; i++) {
+      const agent = this.brushAgents[i];
+      if (agent.active) {
+        if (seen === pick) return agent;
+        seen++;
+      }
+    }
+    return { x: this.width * 0.5, y: this.height * 0.5 };
   }
 
   getRandomTraceSeed() {
@@ -2426,11 +2471,14 @@ class VisualInstrument {
       this.triggerTenderClick();
     });
 
+    const hudToggleButton = document.getElementById('hud-toggle');
+    if (hudToggleButton) {
+      hudToggleButton.addEventListener('click', () => this.toggleHUD());
+    }
+
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
-
-      if (key === '1') this.phase.setTargetPhase(1);
-      else if (key === '2') this.phase.setTargetPhase(2);
+      if (key === '1') this.phase.setTargetPhase(1);      else if (key === '2') this.phase.setTargetPhase(2);
       else if (key === '3') this.phase.setTargetPhase(3);
       else if (key === '4') this.phase.setTargetPhase(4);
       else if (e.key === 'ArrowRight') this.phase.setTargetPhase(Math.min(4, this.phase.toId + 1));
@@ -2507,9 +2555,19 @@ class VisualInstrument {
     }
   }
 
-  toggleHUD() {
+  toggleHUD(forceState) {
     const hud = document.getElementById('hud');
-    hud.classList.toggle('visible');
+    const quickPill = document.getElementById('quick-pill');
+    const toggleButton = document.getElementById('hud-toggle');
+    const shouldShow = typeof forceState === 'boolean' ? forceState : !hud.classList.contains('visible');
+
+    hud.classList.toggle('visible', shouldShow);
+    if (quickPill) quickPill.style.opacity = shouldShow ? '1' : '0';
+    if (toggleButton) {
+      toggleButton.textContent = shouldShow ? 'HUD' : 'HUD';
+      toggleButton.setAttribute('aria-pressed', String(shouldShow));
+      toggleButton.title = shouldShow ? 'Ocultar HUD' : 'Mostrar HUD';
+    }
   }
 
   setupCursorIdle() {
@@ -2523,6 +2581,14 @@ class VisualInstrument {
     this.idleTimer = setTimeout(() => {
       document.body.style.cursor = 'none';
     }, 2500);
+  }
+
+  countActiveAgents() {
+    let count = 0;
+    for (let i = 0; i < this.brushAgents.length; i++) {
+      if (this.brushAgents[i].active) count++;
+    }
+    return count;
   }
 
   updateHUDText() {
@@ -2552,7 +2618,7 @@ class VisualInstrument {
 
     hudTempo.textContent = this.phase.tempo.toFixed(2);
     hudDensity.textContent = `${this.currentDensity.toFixed(2)} (obj: ${this.targetDensity.toFixed(2)})`;
-    const activeCount = this.brushAgents.filter(a => a.active).length;
+    const activeCount = this.countActiveAgents();
     hudAgents.textContent = `${activeCount} / ${this.maxBrushAgents}`;
     hudTurb.textContent = this.flowField.turbulence.toFixed(2);
     hudFront.textContent = this.phase.transTimer < this.phase.transDuration ? `${((this.phase.transTimer / this.phase.transDuration)*100).toFixed(0)}%` : "Completa";
@@ -2675,10 +2741,7 @@ class VisualInstrument {
     this.currentDensity += (this.targetDensity - this.currentDensity) * Math.min(1.0, dt / 6.0);
 
     const targetActiveCount = Math.floor(this.currentDensity * this.maxBrushAgents);
-    let currentActiveCount = 0;
-    for (let i = 0; i < this.brushAgents.length; i++) {
-      if (this.brushAgents[i].active) currentActiveCount++;
-    }
+    const currentActiveCount = this.countActiveAgents();
 
     // Nacimiento escalonado
     if (currentActiveCount < targetActiveCount) {
